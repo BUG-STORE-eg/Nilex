@@ -17,5 +17,5 @@ function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':
 seed();
 $('#lang').addEventListener('click',()=>{lang=lang==='en'?'ar':'en';localStorage.setItem('nilexLang',lang);applyLang();if($('#mailModal').classList.contains('show')){const s=localStorage.getItem(KEY_SESSION);s?renderMail(JSON.parse(s)):renderAuth()}});
 $('#menu').addEventListener('click',()=>$('#nav').classList.toggle('open'));$$('#nav a').forEach(a=>a.addEventListener('click',()=>$('#nav').classList.remove('open')));
-$$('.start-project').forEach(x=>x.addEventListener('click',e=>{e.preventDefault();openMail()}));
-$('#form').addEventListener('submit',e=>{e.preventDefault();openMail()});$('#year').textContent=new Date().getFullYear();applyLang();
+$$('.start-project').forEach(x=>x.addEventListener('click',e=>{e.preventDefault();window.location.href='mail.html'}));
+const projectForm=$('#form');if(projectForm)projectForm.addEventListener('submit',e=>{e.preventDefault();window.location.href='mail.html'});$('#year').textContent=new Date().getFullYear();applyLang();

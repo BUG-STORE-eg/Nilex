@@ -1,15 +1,14 @@
-const SUPABASE_URL = "https://loqwcsxdqgasgokfmswi.supabase.co";
-const SUPABASE_KEY = "sb_publishable_vkNXRSYz-hz_PxJCXGwdhg__0-Jmlsx";
+const SUPABASE_URL =
+  "https://loqwcsxdqgasgokfmswi.supabase.co";
 
-const supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
+const SUPABASE_PUBLISHABLE_KEY =
+  "ضع_مفتاح_Supabase_الخاص_بك_هنا";
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
 );
 
-
-// ========================================
-// STATE
-// ========================================
 
 let currentUser = null;
 let currentProfile = null;
@@ -18,1630 +17,1550 @@ let currentMessages = [];
 let composeMode = "user";
 
 
-// ========================================
-// ELEMENTS
-// ========================================
-
-const loginScreen = document.getElementById("loginScreen");
-const registerScreen = document.getElementById("registerScreen");
-const mailScreen = document.getElementById("mailScreen");
-
-const loginUsername = document.getElementById("loginUsername");
-const loginPassword = document.getElementById("loginPassword");
-const loginError = document.getElementById("loginError");
-
-const registerUsername = document.getElementById("registerUsername");
-const registerPassword = document.getElementById("registerPassword");
-const registerDisplayName = document.getElementById("registerDisplayName");
-const registerError = document.getElementById("registerError");
-
-const welcomeText = document.getElementById("welcomeText");
-const adminControls = document.getElementById("adminControls");
-
-const messagesList = document.getElementById("messagesList");
-const folderTitle = document.getElementById("folderTitle");
-const inboxCount = document.getElementById("inboxCount");
-
-const listView = document.getElementById("listView");
-const messageView = document.getElementById("messageView");
-const composeView = document.getElementById("composeView");
-
-const messageContent = document.getElementById("messageContent");
-
-const recipientBox = document.getElementById("recipientBox");
-const recipientInput = document.getElementById("recipientInput");
-
-const subjectInput = document.getElementById("subjectInput");
-const bodyInput = document.getElementById("bodyInput");
-
-const composeTitle = document.getElementById("composeTitle");
-const composeError = document.getElementById("composeError");
+const $ = id => document.getElementById(id);
 
 
-// ========================================
-// HELPERS
-// ========================================
-
-function showOnly(screen) {
-
-    loginScreen.classList.add("hidden");
-    registerScreen.classList.add("hidden");
-    mailScreen.classList.add("hidden");
-
-    screen.classList.remove("hidden");
+function show(id) {
+  $(id).classList.remove("hidden");
 }
 
 
-function showError(element, message) {
-
-    if (element) {
-        element.textContent = message || "";
-    }
+function hide(id) {
+  $(id).classList.add("hidden");
 }
 
 
-function escapeHTML(value) {
+function setError(id, message = "") {
+  $(id).textContent = message;
+}
 
-    return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+
+function normalizeUsername(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
+
+function internalEmail(username) {
+  return `${normalizeUsername(username)}@nilex.local`;
+}
+
+
+function escapeHtml(value) {
+
+  return String(value ?? "")
+    .replace(/[&<>"']/g, char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[char]));
+
 }
 
 
 function formatDate(date) {
 
-    try {
+  try {
 
-        return new Date(date).toLocaleString("ar-EG", {
-            dateStyle: "medium",
-            timeStyle: "short"
-        });
+    return new Intl.DateTimeFormat(
+      "ar-EG",
+      {
+        dateStyle: "medium",
+        timeStyle: "short"
+      }
+    ).format(new Date(date));
 
-    } catch {
+  } catch {
 
-        return "";
+    return date;
 
-    }
+  }
+
 }
 
 
-// ========================================
-// LOGIN
-// ========================================
+function switchAuth(screen) {
+
+  hide("loginScreen");
+  hide("registerScreen");
+
+  show(screen);
+
+  setError("loginError");
+  setError("registerError");
+
+}
+
+
+function switchMailView(view) {
+
+  hide("listView");
+  hide("messageView");
+  hide("composeView");
+
+  show(view);
+
+}
+
+
+/*
+==================================================
+LOGIN
+==================================================
+*/
 
 async function login() {
 
-    showError(loginError, "");
+  setError("loginError");
 
-    const usernameOrEmail =
-        loginUsername.value.trim();
+  const raw =
+    $("loginUsername").value.trim();
 
-    const password =
-        loginPassword.value;
+  const password =
+    $("loginPassword").value;
 
-    if (!usernameOrEmail || !password) {
 
-        showError(
-            loginError,
-            "اكتب اسم المستخدم وكلمة المرور."
-        );
+  if (!raw || !password) {
 
-        return;
+    setError(
+      "loginError",
+      "اكتب اسم المستخدم وكلمة المرور."
+    );
+
+    return;
+  }
+
+
+  /*
+    IMPORTANT:
+    هنا لا نبحث داخل profiles قبل تسجيل الدخول.
+
+    admin
+    تتحول إلى:
+
+    admin@nilex.local
+
+    وبالتالي نتجنب مشكلة:
+    "حصل خطأ أثناء البحث عن الحساب"
+  */
+
+  let email =
+    raw.toLowerCase();
+
+
+  if (!email.includes("@")) {
+
+    email =
+      internalEmail(email);
+
+  } else if (
+    email.endsWith("@nilex")
+  ) {
+
+    email =
+      email.replace(
+        "@nilex",
+        "@nilex.local"
+      );
+
+  }
+
+
+  $("loginBtn").disabled = true;
+
+  $("loginBtn").textContent =
+    "جاري الدخول...";
+
+
+  try {
+
+    const { error } =
+      await db.auth.signInWithPassword({
+        email,
+        password
+      });
+
+
+    if (error) {
+
+      console.error(error);
+
+      setError(
+        "loginError",
+        "اسم المستخدم أو كلمة المرور غلط."
+      );
+
+      return;
     }
 
+  } catch (err) {
 
-    let email = usernameOrEmail;
+    console.error(err);
 
+    setError(
+      "loginError",
+      "حصل خطأ أثناء تسجيل الدخول."
+    );
 
-    // لو كتب username بدل الإيميل
-    if (!usernameOrEmail.includes("@")) {
+  } finally {
 
-        const {
-            data,
-            error
-        } = await supabaseClient
-            .from("profiles")
-            .select("email")
-            .eq("username", usernameOrEmail)
-            .maybeSingle();
+    $("loginBtn").disabled = false;
 
+    $("loginBtn").textContent =
+      "تسجيل الدخول";
 
-        if (error) {
+  }
 
-            console.error(
-                "Username lookup error:",
-                error
-            );
-
-            showError(
-                loginError,
-                "حصل خطأ أثناء البحث عن الحساب."
-            );
-
-            return;
-        }
+}
 
 
-        if (!data) {
+/*
+==================================================
+REGISTER
+==================================================
+*/
 
-            showError(
-                loginError,
-                "اسم المستخدم أو كلمة المرور غلط."
-            );
+async function register() {
 
-            return;
-        }
-
-
-        email = data.email;
-    }
+  setError("registerError");
 
 
-    // تسجيل الدخول في Supabase
+  const username =
+    normalizeUsername(
+      $("registerUsername").value
+    );
+
+
+  const displayName =
+    $("registerDisplayName")
+      .value
+      .trim() || username;
+
+
+  const password =
+    $("registerPassword").value;
+
+
+  if (
+    !/^[a-z0-9._-]{3,30}$/.test(username)
+  ) {
+
+    setError(
+      "registerError",
+      "اسم المستخدم يكون 3-30 حرفًا: a-z أو 0-9 أو . _ -"
+    );
+
+    return;
+  }
+
+
+  if (password.length < 6) {
+
+    setError(
+      "registerError",
+      "كلمة المرور لازم تكون 6 أحرف أو أكثر."
+    );
+
+    return;
+  }
+
+
+  $("registerBtn").disabled = true;
+
+  $("registerBtn").textContent =
+    "جاري إنشاء الحساب...";
+
+
+  try {
+
+    const email =
+      internalEmail(username);
+
+
     const {
-        data,
-        error
-    } = await supabaseClient.auth.signInWithPassword({
+      data,
+      error
+    } = await db.auth.signUp({
 
-        email: email,
-
-        password: password
+      email,
+      password
 
     });
 
 
     if (error) {
 
-        console.error(
-            "Login error:",
-            error
-        );
+      setError(
+        "registerError",
+        error.message
+      );
 
-        showError(
-            loginError,
-            "اسم المستخدم أو كلمة المرور غلط."
-        );
-
-        return;
+      return;
     }
 
 
-    currentUser = data.user;
+    if (!data.user) {
 
+      setError(
+        "registerError",
+        "لم يتم إنشاء المستخدم."
+      );
 
-    // تحميل بيانات الحساب
-    await loadProfile();
-}
-
-
-// ========================================
-// LOAD PROFILE
-// ========================================
-
-async function loadProfile() {
-
-    if (!currentUser) {
-
-        showOnly(loginScreen);
-
-        return;
+      return;
     }
-
-
-    console.log(
-        "Current Auth User:",
-        currentUser
-    );
 
 
     /*
-       هنا بنجيب بيانات المستخدم
-       عن طريق ID الخاص بـ Supabase Auth
+      لو Supabase طالب تأكيد Email
+      لن تكون هناك Session.
     */
 
+    if (!data.session) {
+
+      setError(
+        "registerError",
+        "تم إنشاء الحساب، لكن تأكيد البريد الإلكتروني مفعّل في Supabase. عطّل Email Confirmations من Auth."
+      );
+
+      return;
+    }
+
+
     const {
-        data,
-        error
-    } = await supabaseClient
-        .from("profiles")
-        .select(
-            "id, username, email, display_name, role"
-        )
-        .eq("id", currentUser.id)
-        .maybeSingle();
+      error: profileError
+    } = await db
+      .from("profiles")
+      .insert({
+
+        id: data.user.id,
+
+        username,
+
+        email,
+
+        display_name:
+          displayName,
+
+        role: "user"
+
+      });
 
 
-    console.log(
-        "Profile:",
-        data
-    );
+    if (profileError) {
 
-    console.log(
-        "Profile Error:",
-        error
-    );
+      console.error(
+        "Profile error:",
+        profileError
+      );
 
+      setError(
+        "registerError",
+        "الحساب اتعمل لكن إعداد بياناته حصل فيه خطأ: " +
+        profileError.message
+      );
 
-    if (error) {
-
-        console.error(
-            "Profile loading error:",
-            error
-        );
-
-
-        showError(
-            loginError,
-            "تم تسجيل الدخول لكن حصل خطأ أثناء تحميل بيانات الحساب."
-        );
-
-
-        await supabaseClient.auth.signOut();
-
-
-        currentUser = null;
-        currentProfile = null;
-
-
-        showOnly(loginScreen);
-
-        return;
+      return;
     }
 
 
-    if (!data) {
-
-        console.error(
-            "Profile not found."
-        );
-
-
-        showError(
-            loginError,
-            "الحساب موجود لكن بياناته غير موجودة في profiles."
-        );
-
-
-        await supabaseClient.auth.signOut();
-
-
-        currentUser = null;
-        currentProfile = null;
-
-
-        showOnly(loginScreen);
-
-        return;
-    }
-
-
-    // حفظ بيانات الحساب
-    currentProfile = data;
-
-
-    console.log(
-        "Current Profile:",
-        currentProfile
+    await loadProfile(
+      data.user
     );
 
 
-    // فتح البريد
-    await showMailScreen();
+  } catch (err) {
+
+    console.error(err);
+
+    setError(
+      "registerError",
+      "حصل خطأ أثناء إنشاء الحساب."
+    );
+
+  } finally {
+
+    $("registerBtn").disabled = false;
+
+    $("registerBtn").textContent =
+      "إنشاء الحساب";
+
+  }
+
 }
 
 
-// ========================================
-// SHOW MAIL SCREEN
-// ========================================
+/*
+==================================================
+LOAD PROFILE
+==================================================
+*/
 
-async function showMailScreen() {
+async function loadProfile(user) {
 
-    showOnly(mailScreen);
-
-
-    const name =
-        currentProfile.display_name ||
-        currentProfile.username ||
-        "مستخدم";
+  currentUser = user;
 
 
-    welcomeText.textContent =
-        `مرحباً ${name}`;
+  const {
+    data,
+    error
+  } = await db
+    .from("profiles")
+    .select(
+      "id, username, email, display_name, role, created_at"
+    )
+    .eq("id", user.id)
+    .maybeSingle();
 
 
-    // إظهار أدوات الأدمن
-    if (currentProfile.role === "admin") {
+  if (error) {
 
-        adminControls.classList.remove(
-            "hidden"
-        );
+    console.error(
+      "Profile load error:",
+      error
+    );
 
-    } else {
+    await db.auth.signOut();
 
-        adminControls.classList.add(
-            "hidden"
-        );
-    }
+    switchAuth(
+      "loginScreen"
+    );
 
+    setError(
+      "loginError",
+      "تم الدخول لكن بيانات الحساب لم تُقرأ. تأكد من RLS في Supabase."
+    );
 
-    currentFolder = "inbox";
-
-
-    openList();
-
-
-    await loadMessages();
+    return;
+  }
 
 
-    await updateInboxCount();
+  if (!data) {
+
+    await db.auth.signOut();
+
+    switchAuth(
+      "loginScreen"
+    );
+
+    setError(
+      "loginError",
+      "الحساب موجود لكن لا توجد بيانات له في profiles."
+    );
+
+    return;
+  }
+
+
+  currentProfile =
+    data;
+
+
+  showMailScreen();
+
 }
 
 
-// ========================================
-// LOAD MESSAGES
-// ========================================
+/*
+==================================================
+SHOW MAIL
+==================================================
+*/
+
+function showMailScreen() {
+
+  hide("loginScreen");
+  hide("registerScreen");
+
+  show("mailScreen");
+
+
+  const name =
+    currentProfile.display_name ||
+    currentProfile.username ||
+    "NILEX";
+
+
+  $("welcomeText").textContent =
+    name;
+
+
+  $("profileEmail").textContent =
+    currentProfile.email || "";
+
+
+  $("profileAvatar").textContent =
+    name.charAt(0).toUpperCase();
+
+
+  if (
+    currentProfile.role === "admin"
+  ) {
+
+    show("adminControls");
+
+  } else {
+
+    hide("adminControls");
+
+  }
+
+
+  currentFolder =
+    "inbox";
+
+
+  document
+    .querySelectorAll(".folder")
+    .forEach(
+      btn =>
+        btn.classList.remove("active")
+    );
+
+
+  document
+    .querySelector(
+      '[data-folder="inbox"]'
+    )
+    .classList.add("active");
+
+
+  loadMessages();
+
+}
+
+
+/*
+==================================================
+MESSAGES
+==================================================
+*/
 
 async function loadMessages() {
 
-    if (!currentUser) {
-        return;
-    }
+  const list =
+    $("messagesList");
 
 
-    messagesList.innerHTML =
-        `<div class="loading">
-            جاري تحميل الرسائل...
-        </div>`;
+  list.innerHTML =
+    '<div class="empty">جاري تحميل الرسائل...</div>';
 
 
-    let query = supabaseClient
-        .from("messages")
-        .select(`
-            id,
-            sender_id,
-            receiver_id,
-            subject,
-            body,
-            is_read,
-            created_at,
-
-            sender:profiles!messages_sender_id_fkey(
-                username,
-                email,
-                display_name
-            ),
-
-            receiver:profiles!messages_receiver_id_fkey(
-                username,
-                email,
-                display_name
-            )
-        `)
-        .order(
-            "created_at",
-            {
-                ascending: false
-            }
-        );
+  if (!currentUser)
+    return;
 
 
-    // الوارد
-    if (currentFolder === "inbox") {
-
-        query = query.eq(
-            "receiver_id",
-            currentUser.id
-        );
-
-        folderTitle.textContent =
-            "الوارد";
-
-    }
-
-    // المرسل
-    else {
-
-        query = query.eq(
-            "sender_id",
-            currentUser.id
-        );
-
-        folderTitle.textContent =
-            "المرسل";
-    }
-
-
-    const {
-        data,
-        error
-    } = await query;
-
-
-    if (error) {
-
-        console.error(
-            "Messages error:",
-            error
-        );
+  let query =
+    db
+      .from("messages")
+      .select(`
+        id,
+        sender_id,
+        receiver_id,
+        subject,
+        body,
+        is_read,
+        created_at,
+        sender:profiles!messages_sender_id_fkey(
+          id,
+          username,
+          email,
+          display_name
+        ),
+        receiver:profiles!messages_receiver_id_fkey(
+          id,
+          username,
+          email,
+          display_name
+        )
+      `)
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
 
 
-        messagesList.innerHTML = `
-            <div class="empty">
-                حصل خطأ أثناء تحميل الرسائل.
-            </div>
-        `;
+  if (
+    currentFolder ===
+    "inbox"
+  ) {
 
-        return;
-    }
+    query =
+      query.eq(
+        "receiver_id",
+        currentUser.id
+      );
+
+  } else {
+
+    query =
+      query.eq(
+        "sender_id",
+        currentUser.id
+      );
+
+  }
 
 
-    currentMessages =
-        data || [];
+  const {
+    data,
+    error
+  } = await query;
 
 
-    renderMessages();
+  if (error) {
+
+    console.error(
+      "Messages error:",
+      error
+    );
+
+    list.innerHTML =
+      `<div class="empty">
+        حصل خطأ أثناء تحميل الرسائل.<br>
+        ${escapeHtml(error.message)}
+      </div>`;
+
+    return;
+  }
 
 
-    await updateInboxCount();
+  currentMessages =
+    data || [];
+
+
+  renderMessages();
+
 }
 
 
-// ========================================
-// RENDER MESSAGES
-// ========================================
+/*
+==================================================
+RENDER
+==================================================
+*/
 
 function renderMessages() {
 
-    if (!currentMessages.length) {
+  const list =
+    $("messagesList");
 
-        messagesList.innerHTML = `
-            <div class="empty">
-                لا توجد رسائل هنا.
+
+  $("folderTitle").textContent =
+    currentFolder === "inbox"
+      ? "الوارد"
+      : "المرسل";
+
+
+  if (!currentMessages.length) {
+
+    list.innerHTML =
+      '<div class="empty">لا توجد رسائل هنا حاليًا.</div>';
+
+    return;
+  }
+
+
+  list.innerHTML =
+    currentMessages
+      .map(message => {
+
+        const other =
+          currentFolder === "inbox"
+            ? message.sender
+            : message.receiver;
+
+
+        const name =
+          other?.display_name ||
+          other?.username ||
+          other?.email ||
+          "NILEX";
+
+
+        const preview =
+          (message.body || "")
+            .replace(/\s+/g, " ")
+            .slice(0, 100);
+
+
+        return `
+
+          <div
+            class="message-row ${
+              !message.is_read &&
+              currentFolder === "inbox"
+                ? "unread"
+                : ""
+            }"
+            data-message-id="${message.id}"
+          >
+
+            <div class="message-sender">
+              ${escapeHtml(name)}
             </div>
+
+            <div>
+
+              <div class="message-subject">
+                ${escapeHtml(
+                  message.subject ||
+                  "(بدون عنوان)"
+                )}
+              </div>
+
+              <div class="message-preview">
+                ${escapeHtml(preview)}
+              </div>
+
+            </div>
+
+            <div class="message-date">
+              ${escapeHtml(
+                formatDate(
+                  message.created_at
+                )
+              )}
+            </div>
+
+          </div>
+
         `;
 
-        return;
-    }
+      })
+      .join("");
 
 
-    messagesList.innerHTML =
-        currentMessages.map(message => {
+  list
+    .querySelectorAll(".message-row")
+    .forEach(row => {
 
-            const person =
-                currentFolder === "inbox"
-                    ? message.sender
-                    : message.receiver;
+      row.addEventListener(
+        "click",
+        () =>
+          openMessage(
+            Number(
+              row.dataset.messageId
+            )
+          )
+      );
 
-
-            const name =
-                person?.display_name ||
-                person?.username ||
-                person?.email ||
-                "مستخدم";
-
-
-            return `
-                <div
-                    class="message-item ${
-                        !message.is_read &&
-                        currentFolder === "inbox"
-                            ? "unread"
-                            : ""
-                    }"
-                    data-id="${message.id}"
-                >
-
-                    <div class="message-top">
-
-                        <div class="message-sender">
-                            ${escapeHTML(name)}
-                        </div>
-
-                        <div class="message-date">
-                            ${formatDate(
-                                message.created_at
-                            )}
-                        </div>
-
-                    </div>
-
-                    <div class="message-subject">
-                        ${escapeHTML(
-                            message.subject ||
-                            "(بدون موضوع)"
-                        )}
-                    </div>
-
-                    <div class="message-preview">
-                        ${escapeHTML(
-                            message.body
-                        )}
-                    </div>
-
-                </div>
-            `;
-
-        }).join("");
+    });
 
 
-    document
-        .querySelectorAll(".message-item")
-        .forEach(element => {
+  if (
+    currentFolder === "inbox"
+  ) {
 
-            element.addEventListener(
-                "click",
-                () => {
+    const unread =
+      currentMessages.filter(
+        m => !m.is_read
+      ).length;
 
-                    openMessage(
-                        Number(
-                            element.dataset.id
-                        )
-                    );
 
-                }
-            );
+    $("inboxCount")
+      .textContent =
+      unread;
 
-        });
+  }
+
 }
 
 
-// ========================================
-// OPEN MESSAGE
-// ========================================
+/*
+==================================================
+OPEN MESSAGE
+==================================================
+*/
 
 async function openMessage(id) {
 
-    const message =
-        currentMessages.find(
-            item =>
-                Number(item.id) === id
-        );
+  const message =
+    currentMessages.find(
+      m => Number(m.id) === id
+    );
 
 
-    if (!message) {
-        return;
-    }
+  if (!message)
+    return;
 
 
-    const sender =
-        message.sender?.display_name ||
-        message.sender?.username ||
-        message.sender?.email ||
-        "مستخدم";
+  $("messageContent").innerHTML = `
 
+    <article class="message-card">
 
-    const receiver =
-        message.receiver?.display_name ||
-        message.receiver?.username ||
-        message.receiver?.email ||
-        "مستخدم";
+      <div class="message-meta">
 
+        <h2>
+          ${escapeHtml(
+            message.subject ||
+            "(بدون عنوان)"
+          )}
+        </h2>
 
-    messageContent.innerHTML = `
-
-        <div class="message-card">
-
-            <h1>
-                ${escapeHTML(
-                    message.subject ||
-                    "(بدون موضوع)"
-                )}
-            </h1>
-
-            <div class="message-meta">
-
-                <div>
-                    <strong>من:</strong>
-                    ${escapeHTML(sender)}
-                </div>
-
-                <div>
-                    <strong>إلى:</strong>
-                    ${escapeHTML(receiver)}
-                </div>
-
-                <div>
-                    ${formatDate(
-                        message.created_at
-                    )}
-                </div>
-
-            </div>
-
-            <div class="message-body">
-                ${escapeHTML(
-                    message.body
-                )}
-            </div>
-
+        <div class="meta-line">
+          من:
+          ${escapeHtml(
+            message.sender?.display_name ||
+            message.sender?.username ||
+            message.sender?.email ||
+            ""
+          )}
         </div>
 
-    `;
+        <div class="meta-line">
+          إلى:
+          ${escapeHtml(
+            message.receiver?.display_name ||
+            message.receiver?.username ||
+            message.receiver?.email ||
+            ""
+          )}
+        </div>
 
-
-    openMessageView();
-
-
-    // تحديد الرسالة كمقروءة
-    if (
-        !message.is_read &&
-        message.receiver_id === currentUser.id
-    ) {
-
-        const {
-            error
-        } = await supabaseClient
-            .from("messages")
-            .update({
-                is_read: true
-            })
-            .eq(
-                "id",
-                message.id
+        <div class="meta-line">
+          ${escapeHtml(
+            formatDate(
+              message.created_at
             )
-            .eq(
-                "receiver_id",
-                currentUser.id
-            );
+          )}
+        </div>
+
+      </div>
+
+      <div class="message-body">
+        ${escapeHtml(
+          message.body
+        )}
+      </div>
+
+    </article>
+
+  `;
 
 
-        if (!error) {
-
-            message.is_read = true;
-
-            await updateInboxCount();
-        }
-    }
-}
+  switchMailView(
+    "messageView"
+  );
 
 
-// ========================================
-// INBOX COUNT
-// ========================================
-
-async function updateInboxCount() {
-
-    if (!currentUser) {
-        return;
-    }
-
+  if (
+    currentFolder === "inbox" &&
+    !message.is_read &&
+    message.receiver_id === currentUser.id
+  ) {
 
     const {
-        count,
-        error
-    } = await supabaseClient
-        .from("messages")
-        .select(
-            "id",
-            {
-                count: "exact",
-                head: true
-            }
-        )
-        .eq(
-            "receiver_id",
-            currentUser.id
-        )
-        .eq(
-            "is_read",
-            false
-        );
+      error
+    } = await db
+      .from("messages")
+      .update({
+        is_read: true
+      })
+      .eq(
+        "id",
+        id
+      )
+      .eq(
+        "receiver_id",
+        currentUser.id
+      );
 
 
     if (!error) {
 
-        inboxCount.textContent =
-            count || 0;
+      message.is_read =
+        true;
+
+      renderMessages();
 
     }
+
+  }
+
 }
 
 
-// ========================================
-// VIEWS
-// ========================================
+/*
+==================================================
+USER COMPOSE
+==================================================
+*/
 
-function openList() {
+function openUserCompose() {
 
-    listView.classList.remove(
-        "hidden"
-    );
+  composeMode =
+    "user";
 
-    messageView.classList.add(
-        "hidden"
-    );
 
-    composeView.classList.add(
-        "hidden"
-    );
+  $("composeTitle")
+    .textContent =
+    "إرسال طلب للأدمن";
+
+
+  $("recipientInput")
+    .value =
+    "admin@nilex";
+
+
+  $("recipientInput")
+    .readOnly =
+    true;
+
+
+  show("recipientBox");
+
+
+  setError(
+    "composeError"
+  );
+
+
+  $("subjectInput")
+    .value = "";
+
+
+  $("bodyInput")
+    .value = "";
+
+
+  switchMailView(
+    "composeView"
+  );
+
 }
 
 
-function openMessageView() {
+/*
+==================================================
+ADMIN COMPOSE
+==================================================
+*/
 
-    listView.classList.add(
-        "hidden"
-    );
+function openAdminCompose() {
 
-    messageView.classList.remove(
-        "hidden"
-    );
+  composeMode =
+    "admin";
 
-    composeView.classList.add(
-        "hidden"
-    );
+
+  $("composeTitle")
+    .textContent =
+    "إرسال رسالة لحساب";
+
+
+  $("recipientInput")
+    .value = "";
+
+
+  $("recipientInput")
+    .readOnly =
+    false;
+
+
+  $("recipientInput")
+    .placeholder =
+    "username أو username@nilex";
+
+
+  show("recipientBox");
+
+
+  setError(
+    "composeError"
+  );
+
+
+  $("subjectInput")
+    .value = "";
+
+
+  $("bodyInput")
+    .value = "";
+
+
+  switchMailView(
+    "composeView"
+  );
+
 }
 
 
-function openCompose() {
+/*
+==================================================
+FIND ADMIN
+==================================================
+*/
 
-    listView.classList.add(
-        "hidden"
-    );
+async function findAdmin() {
 
-    messageView.classList.add(
-        "hidden"
-    );
-
-    composeView.classList.remove(
-        "hidden"
-    );
-
-
-    subjectInput.value = "";
-    bodyInput.value = "";
-    recipientInput.value = "";
-
-
-    showError(
-        composeError,
-        ""
-    );
+  const {
+    data,
+    error
+  } = await db
+    .from("profiles")
+    .select(
+      "id, username, email, display_name"
+    )
+    .eq(
+      "role",
+      "admin"
+    )
+    .limit(1)
+    .maybeSingle();
 
 
-    if (composeMode === "admin") {
+  if (error)
+    throw error;
 
-        composeTitle.textContent =
-            "إرسال رسالة";
 
-        recipientBox.classList.remove(
-            "hidden"
-        );
+  return data;
 
-    } else {
-
-        composeTitle.textContent =
-            "إرسال طلبك للأدمن";
-
-        recipientBox.classList.add(
-            "hidden"
-        );
-    }
 }
 
 
-// ========================================
-// USER NEW MESSAGE
-// ========================================
+/*
+==================================================
+FIND USER
+==================================================
+*/
 
-function prepareUserMessage() {
+async function findRecipientForAdmin(
+  input
+) {
 
-    composeMode = "user";
+  let value =
+    input
+      .trim()
+      .toLowerCase();
 
-    openCompose();
+
+  if (!value)
+    return null;
+
+
+  if (!value.includes("@")) {
+
+    const {
+      data,
+      error
+    } = await db
+      .from("profiles")
+      .select(
+        "id, username, email, display_name"
+      )
+      .eq(
+        "username",
+        value
+      )
+      .maybeSingle();
+
+
+    if (error)
+      throw error;
+
+
+    return data;
+
+  }
+
+
+  if (
+    value.endsWith("@nilex")
+  ) {
+
+    value =
+      value.replace(
+        "@nilex",
+        "@nilex.local"
+      );
+
+  }
+
+
+  const {
+    data,
+    error
+  } = await db
+    .from("profiles")
+    .select(
+      "id, username, email, display_name"
+    )
+    .eq(
+      "email",
+      value
+    )
+    .maybeSingle();
+
+
+  if (error)
+    throw error;
+
+
+  return data;
+
 }
 
 
-// ========================================
-// ADMIN NEW MESSAGE
-// ========================================
-
-function prepareAdminMessage() {
-
-    if (
-        !currentProfile ||
-        currentProfile.role !== "admin"
-    ) {
-
-        return;
-    }
-
-
-    composeMode = "admin";
-
-    openCompose();
-}
-
-
-// ========================================
-// SEND MESSAGE
-// ========================================
+/*
+==================================================
+SEND MESSAGE
+==================================================
+*/
 
 async function sendMessage() {
 
-    showError(
-        composeError,
-        ""
+  setError(
+    "composeError"
+  );
+
+
+  const subject =
+    $("subjectInput")
+      .value
+      .trim();
+
+
+  const body =
+    $("bodyInput")
+      .value
+      .trim();
+
+
+  if (!subject) {
+
+    setError(
+      "composeError",
+      "اكتب عنوان الرسالة."
     );
 
+    return;
+  }
 
-    const subject =
-        subjectInput.value.trim();
 
-    const body =
-        bodyInput.value.trim();
+  if (!body) {
 
-
-    if (!body) {
-
-        showError(
-            composeError,
-            "اكتب محتوى الرسالة."
-        );
-
-        return;
-    }
-
-
-    let receiverId = null;
-
-
-    // ====================================
-    // USER → ADMIN
-    // ====================================
-
-    if (composeMode === "user") {
-
-        const {
-            data,
-            error
-        } = await supabaseClient
-            .from("profiles")
-            .select("id")
-            .eq(
-                "role",
-                "admin"
-            )
-            .limit(1)
-            .maybeSingle();
-
-
-        if (error) {
-
-            console.error(
-                "Admin lookup error:",
-                error
-            );
-
-            showError(
-                composeError,
-                "حصل خطأ أثناء البحث عن الأدمن."
-            );
-
-            return;
-        }
-
-
-        if (!data) {
-
-            showError(
-                composeError,
-                "لم يتم العثور على حساب الأدمن."
-            );
-
-            return;
-        }
-
-
-        receiverId =
-            data.id;
-    }
-
-
-    // ====================================
-    // ADMIN → USER
-    // ====================================
-
-    if (composeMode === "admin") {
-
-        const recipient =
-            recipientInput.value
-                .trim()
-                .toLowerCase();
-
-
-        if (!recipient) {
-
-            showError(
-                composeError,
-                "اكتب Username أو البريد الداخلي للمستلم."
-            );
-
-            return;
-        }
-
-
-        let query =
-            supabaseClient
-                .from("profiles")
-                .select(
-                    "id, username, email"
-                );
-
-
-        if (
-            recipient.includes("@")
-        ) {
-
-            let email =
-                recipient;
-
-
-            // تحويل username@nilex
-            // إلى username@nilex.local
-            if (
-                email.endsWith(
-                    "@nilex"
-                )
-            ) {
-
-                email =
-                    email.replace(
-                        "@nilex",
-                        "@nilex.local"
-                    );
-            }
-
-
-            query =
-                query.eq(
-                    "email",
-                    email
-                );
-
-        } else {
-
-            query =
-                query.eq(
-                    "username",
-                    recipient
-                );
-        }
-
-
-        const {
-            data,
-            error
-        } = await query
-            .maybeSingle();
-
-
-        if (error) {
-
-            console.error(
-                "Recipient lookup error:",
-                error
-            );
-
-            showError(
-                composeError,
-                "حصل خطأ أثناء البحث عن المستخدم."
-            );
-
-            return;
-        }
-
-
-        if (!data) {
-
-            showError(
-                composeError,
-                "المستخدم غير موجود."
-            );
-
-            return;
-        }
-
-
-        receiverId =
-            data.id;
-    }
-
-
-    // ====================================
-    // INSERT MESSAGE
-    // ====================================
-
-    const {
-        error
-    } = await supabaseClient
-        .from("messages")
-        .insert({
-
-            sender_id:
-                currentUser.id,
-
-            receiver_id:
-                receiverId,
-
-            subject:
-                subject,
-
-            body:
-                body
-
-        });
-
-
-    if (error) {
-
-        console.error(
-            "Send message error:",
-            error
-        );
-
-
-        showError(
-            composeError,
-            "حصل خطأ أثناء إرسال الرسالة."
-        );
-
-        return;
-    }
-
-
-    alert(
-        "تم إرسال الرسالة بنجاح."
+    setError(
+      "composeError",
+      "اكتب محتوى الرسالة."
     );
 
-
-    subjectInput.value = "";
-    bodyInput.value = "";
-    recipientInput.value = "";
+    return;
+  }
 
 
-    currentFolder = "sent";
+  $("sendMessageBtn")
+    .disabled =
+    true;
 
 
-    openList();
+  $("sendMessageBtn")
+    .textContent =
+    "جاري الإرسال...";
 
 
-    await loadMessages();
-}
+  try {
 
-
-// ========================================
-// REGISTER
-// ========================================
-
-async function register() {
-
-    showError(
-        registerError,
-        ""
-    );
-
-
-    const username =
-        registerUsername.value
-            .trim()
-            .toLowerCase();
-
-
-    const password =
-        registerPassword.value;
-
-
-    const displayName =
-        registerDisplayName.value
-            .trim();
-
-
-    if (!username || !password) {
-
-        showError(
-            registerError,
-            "اكتب Username وكلمة المرور."
-        );
-
-        return;
-    }
+    let recipient;
 
 
     if (
-        !/^[a-z0-9._-]+$/i.test(
-            username
-        )
+      composeMode ===
+      "user"
     ) {
 
-        showError(
-            registerError,
-            "الـ Username يستخدم حروف إنجليزية وأرقام فقط."
-        );
-
-        return;
-    }
-
-
-    if (password.length < 6) {
-
-        showError(
-            registerError,
-            "كلمة المرور يجب أن تكون 6 أحرف على الأقل."
-        );
-
-        return;
-    }
-
-
-    const email =
-        `${username}@nilex.local`;
-
-
-    // التأكد من عدم وجود Username
-    const {
-        data: existing,
-        error: existingError
-    } = await supabaseClient
-        .from("profiles")
-        .select("id")
-        .eq(
-            "username",
-            username
-        )
-        .maybeSingle();
-
-
-    if (existingError) {
-
-        console.error(
-            "Username check error:",
-            existingError
-        );
-
-        showError(
-            registerError,
-            "حصل خطأ أثناء التأكد من اسم المستخدم."
-        );
-
-        return;
-    }
-
-
-    if (existing) {
-
-        showError(
-            registerError,
-            "اسم المستخدم ده مستخدم بالفعل."
-        );
-
-        return;
-    }
-
-
-    // إنشاء حساب Auth
-    const {
-        data,
-        error
-    } = await supabaseClient.auth.signUp({
-
-        email: email,
-
-        password: password,
-
-        options: {
-
-            data: {
-
-                username:
-                    username,
-
-                display_name:
-                    displayName ||
-                    username
-
-            }
-
-        }
-
-    });
-
-
-    if (error) {
-
-        console.error(
-            "Signup error:",
-            error
-        );
-
-
-        showError(
-            registerError,
-            error.message ||
-            "حصل خطأ أثناء إنشاء الحساب."
-        );
-
-        return;
-    }
-
-
-    /*
-       لو Supabase رجّع Session
-       نعمل Profile مباشرة.
-    */
-
-    if (
-        data.user &&
-        data.session
-    ) {
-
-        const {
-            error: profileError
-        } = await supabaseClient
-            .from("profiles")
-            .insert({
-
-                id:
-                    data.user.id,
-
-                username:
-                    username,
-
-                email:
-                    email,
-
-                display_name:
-                    displayName ||
-                    username,
-
-                role:
-                    "user"
-
-            });
-
-
-        if (profileError) {
-
-            console.error(
-                "Profile creation error:",
-                profileError
-            );
-
-
-            showError(
-                registerError,
-                "الحساب اتعمل لكن إعداد بياناته حصل فيه خطأ."
-            );
-
-            return;
-        }
-
-
-        currentUser =
-            data.user;
-
-
-        await loadProfile();
-
-        return;
-    }
-
-
-    /*
-       لو Email Confirmation مفعّل
-    */
-
-    showError(
-        registerError,
-        "تم إنشاء الحساب. يجب إيقاف تأكيد البريد الإلكتروني من Supabase ثم تسجيل الدخول."
-    );
-}
-
-
-// ========================================
-// LOGOUT
-// ========================================
-
-async function logout() {
-
-    await supabaseClient.auth.signOut();
-
-
-    currentUser = null;
-
-    currentProfile = null;
-
-    currentMessages = [];
-
-
-    loginUsername.value = "";
-
-    loginPassword.value = "";
-
-
-    showOnly(
-        loginScreen
-    );
-}
-
-
-// ========================================
-// EVENTS
-// ========================================
-
-document
-    .getElementById("loginBtn")
-    .addEventListener(
-        "click",
-        login
-    );
-
-
-document
-    .getElementById("registerBtn")
-    .addEventListener(
-        "click",
-        register
-    );
-
-
-document
-    .getElementById("showRegisterBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            showError(
-                loginError,
-                ""
-            );
-
-            showOnly(
-                registerScreen
-            );
-
-        }
-    );
-
-
-document
-    .getElementById("backLoginBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            showError(
-                registerError,
-                ""
-            );
-
-            showOnly(
-                loginScreen
-            );
-
-        }
-    );
-
-
-document
-    .getElementById("logoutBtn")
-    .addEventListener(
-        "click",
-        logout
-    );
-
-
-document
-    .getElementById("newMessageBtn")
-    .addEventListener(
-        "click",
-        prepareUserMessage
-    );
-
-
-document
-    .getElementById("adminComposeBtn")
-    .addEventListener(
-        "click",
-        prepareAdminMessage
-    );
-
-
-document
-    .getElementById("sendMessageBtn")
-    .addEventListener(
-        "click",
-        sendMessage
-    );
-
-
-document
-    .getElementById("cancelComposeBtn")
-    .addEventListener(
-        "click",
-        openList
-    );
-
-
-document
-    .getElementById("backToListBtn")
-    .addEventListener(
-        "click",
-        openList
-    );
-
-
-document
-    .getElementById("refreshBtn")
-    .addEventListener(
-        "click",
-        loadMessages
-    );
-
-
-// ========================================
-// HOME BUTTON
-// ========================================
-
-document
-    .getElementById("homeBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            window.location.href =
-                "index.html";
-
-        }
-    );
-
-
-// ========================================
-// FOLDERS
-// ========================================
-
-document
-    .querySelectorAll(
-        ".folder[data-folder]"
-    )
-    .forEach(button => {
-
-        button.addEventListener(
-            "click",
-            async () => {
-
-                currentFolder =
-                    button.dataset.folder;
-
-
-                document
-                    .querySelectorAll(
-                        ".folder[data-folder]"
-                    )
-                    .forEach(item => {
-
-                        item.classList.remove(
-                            "active"
-                        );
-
-                    });
-
-
-                button.classList.add(
-                    "active"
-                );
-
-
-                openList();
-
-
-                await loadMessages();
-
-            }
-        );
-
-    });
-
-
-// ========================================
-// ENTER LOGIN
-// ========================================
-
-loginPassword.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key === "Enter"
-        ) {
-
-            login();
-
-        }
-
-    }
-);
-
-
-// ========================================
-// SESSION
-// ========================================
-
-async function init() {
-
-    const {
-        data
-    } = await supabaseClient
-        .auth
-        .getSession();
-
-
-    if (
-        data &&
-        data.session &&
-        data.session.user
-    ) {
-
-        currentUser =
-            data.session.user;
-
-
-        await loadProfile();
+      recipient =
+        await findAdmin();
 
     } else {
 
-        showOnly(
-            loginScreen
+      recipient =
+        await findRecipientForAdmin(
+          $("recipientInput")
+            .value
         );
 
     }
+
+
+    if (!recipient) {
+
+      setError(
+        "composeError",
+        "لم يتم العثور على الحساب المطلوب."
+      );
+
+      return;
+    }
+
+
+    const {
+      error
+    } = await db
+      .from("messages")
+      .insert({
+
+        sender_id:
+          currentUser.id,
+
+        receiver_id:
+          recipient.id,
+
+        subject,
+
+        body
+
+      });
+
+
+    if (error)
+      throw error;
+
+
+    $("subjectInput")
+      .value = "";
+
+
+    $("bodyInput")
+      .value = "";
+
+
+    switchMailView(
+      "listView"
+    );
+
+
+    await loadMessages();
+
+
+  } catch (err) {
+
+    console.error(
+      "Send message error:",
+      err
+    );
+
+
+    setError(
+      "composeError",
+      err.message ||
+      "حصل خطأ أثناء إرسال الرسالة."
+    );
+
+  } finally {
+
+    $("sendMessageBtn")
+      .disabled =
+      false;
+
+
+    $("sendMessageBtn")
+      .textContent =
+      "إرسال الرسالة";
+
+  }
+
 }
 
 
-// ========================================
-// AUTH STATE
-// ========================================
+/*
+==================================================
+LOGOUT
+==================================================
+*/
 
-supabaseClient.auth.onAuthStateChange(
-    async (event, session) => {
+async function logout() {
+
+  await db.auth.signOut();
+
+}
+
+
+/*
+==================================================
+EVENTS
+==================================================
+*/
+
+function bindEvents() {
+
+  $("loginBtn")
+    .addEventListener(
+      "click",
+      login
+    );
+
+
+  $("registerBtn")
+    .addEventListener(
+      "click",
+      register
+    );
+
+
+  $("showRegisterBtn")
+    .addEventListener(
+      "click",
+      () =>
+        switchAuth(
+          "registerScreen"
+        )
+    );
+
+
+  $("backLoginBtn")
+    .addEventListener(
+      "click",
+      () =>
+        switchAuth(
+          "loginScreen"
+        )
+    );
+
+
+  $("loginPassword")
+    .addEventListener(
+      "keydown",
+      event => {
 
         if (
-            event === "SIGNED_OUT"
+          event.key ===
+          "Enter"
         ) {
 
-            currentUser = null;
-            currentProfile = null;
+          login();
 
-            showOnly(
-                loginScreen
+        }
+
+      }
+    );
+
+
+  $("registerPassword")
+    .addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key ===
+          "Enter"
+        ) {
+
+          register();
+
+        }
+
+      }
+    );
+
+
+  $("newMessageBtn")
+    .addEventListener(
+      "click",
+      openUserCompose
+    );
+
+
+  $("adminComposeBtn")
+    .addEventListener(
+      "click",
+      openAdminCompose
+    );
+
+
+  $("cancelComposeBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        switchMailView(
+          "listView"
+        );
+
+        loadMessages();
+
+      }
+    );
+
+
+  $("backToListBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        switchMailView(
+          "listView"
+        );
+
+        loadMessages();
+
+      }
+    );
+
+
+  $("sendMessageBtn")
+    .addEventListener(
+      "click",
+      sendMessage
+    );
+
+
+  $("refreshBtn")
+    .addEventListener(
+      "click",
+      loadMessages
+    );
+
+
+  $("logoutBtn")
+    .addEventListener(
+      "click",
+      logout
+    );
+
+
+  $("homeBtn")
+    .addEventListener(
+      "click",
+      () => {
+
+        window.location.href =
+          "index.html";
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(".folder")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        async () => {
+
+          currentFolder =
+            button.dataset.folder;
+
+
+          document
+            .querySelectorAll(
+              ".folder"
+            )
+            .forEach(
+              btn =>
+                btn.classList.remove(
+                  "active"
+                )
             );
 
-            return;
-        }
+
+          button.classList.add(
+            "active"
+          );
 
 
-        if (
-            event === "SIGNED_IN" &&
-            session &&
-            !currentProfile
-        ) {
+          switchMailView(
+            "listView"
+          );
 
-            currentUser =
-                session.user;
 
-            await loadProfile();
+          await loadMessages();
 
         }
+      );
+
+    });
+
+}
+
+
+/*
+==================================================
+INIT
+==================================================
+*/
+
+async function init() {
+
+  bindEvents();
+
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await db.auth.getSession();
+
+
+  if (session?.user) {
+
+    await loadProfile(
+      session.user
+    );
+
+  } else {
+
+    switchAuth(
+      "loginScreen"
+    );
+
+  }
+
+
+  db.auth.onAuthStateChange(
+    async (
+      event,
+      sessionData
+    ) => {
+
+      if (
+        event ===
+        "SIGNED_OUT"
+      ) {
+
+        currentUser =
+          null;
+
+        currentProfile =
+          null;
+
+        hide(
+          "mailScreen"
+        );
+
+        switchAuth(
+          "loginScreen"
+        );
+
+      }
+
+
+      if (
+        event ===
+          "SIGNED_IN" &&
+        sessionData?.user
+      ) {
+
+        setTimeout(
+          () =>
+            loadProfile(
+              sessionData.user
+            ),
+          0
+        );
+
+      }
 
     }
-);
+  );
 
+}
 
-// ========================================
-// START
-// ========================================
 
 init();

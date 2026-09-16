@@ -1,9 +1,9 @@
-
 <!doctype html>
 <html lang="ar" dir="rtl">
 
 <head>
   <meta charset="UTF-8">
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
@@ -16,7 +16,6 @@
     href="mail.css"
   >
 
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
@@ -56,7 +55,7 @@
       <input
         id="loginUsername"
         type="text"
-        placeholder="admin أو alone@nilex"
+        placeholder="admin أو islam@nilex"
         autocomplete="username"
       >
 
@@ -143,7 +142,7 @@
       <input
         id="signupUsername"
         type="text"
-        placeholder="مثال: alone"
+        placeholder="مثال: islam"
         autocomplete="username"
         maxlength="30"
       >
@@ -155,7 +154,7 @@
       <input
         id="signupEmail"
         type="text"
-        placeholder="alone@nilex"
+        placeholder="username@nilex"
         readonly
       >
 
@@ -163,7 +162,7 @@
         البريد الداخلي بيتكوّن تلقائيًا من اسم المستخدم.
         <br>
         مثال:
-        <b>alone@nilex</b>
+        <b>islam@nilex</b>
       </div>
 
       <label for="signupPassword">
@@ -267,7 +266,7 @@
     </header>
 
 
-    <!-- ================= MAIN LAYOUT ================= -->
+    <!-- ================= MAIN ================= -->
 
     <div class="layout">
 
@@ -282,7 +281,6 @@
         >
           ＋ رسالة جديدة
         </button>
-
 
         <button
           class="folder active"
@@ -299,7 +297,6 @@
           </b>
 
         </button>
-
 
         <button
           class="folder"
@@ -368,11 +365,12 @@
 
           </div>
 
-
           <div id="messagesList">
+
             <div class="loading">
               جاري تحميل الرسائل...
             </div>
+
           </div>
 
         </div>
@@ -394,7 +392,6 @@
             → رجوع
           </button>
 
-
           <div id="messageContent">
 
             <div>
@@ -411,7 +408,6 @@
                 ></div>
 
               </div>
-
 
               <div
                 id="viewBody"
@@ -486,9 +482,7 @@
                 المستلم
               </label>
 
-              <select
-                id="adminReceiver"
-              >
+              <select id="adminReceiver">
 
                 <option value="">
                   اختر الحساب
@@ -505,9 +499,7 @@
               العنوان
             </label>
 
-            <select
-              id="messageSubject"
-            >
+            <select id="messageSubject">
 
               <option value="">
                 اختر نوع الخدمة
@@ -622,13 +614,8 @@
   </section>
 
 
-  <!-- =====================================================
-       JS
-  ====================================================== -->
-
   <script src="mail.js"></script>
 
 </body>
 
 </html>
-

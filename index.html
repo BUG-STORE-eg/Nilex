@@ -1,1 +1,628 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NILEX</title><link rel="stylesheet" href="style.css"></head><body><header><a class="logo" href="index.html"><b>N</b>NILEX</a><nav><a href="#services">الخدمات</a><a href="#about">عن NILEX</a><a href="#contact">تواصل معنا</a><a class="cta" href="mail.html">ابدأ مشروعك</a></nav></header><main><section class="hero"><div><small> DIGITAL • TECH • CREATIVE </small><h1>نبني فكرتك<br><em>بشكل مختلف.</em></h1><p>تطوير، تصميم، دعم تقني وإدارة مواقع وحلول رقمية في مكان واحد.</p><a class="button" href="mail.html">ابدأ مشروعك ←</a></div><div class="hero-card"><strong>N</strong><span>NILEX</span></div></section><section id="services"><small>WHAT WE DO</small><h2>خدماتنا</h2><div class="grid"><article class="service-card" data-service="تطوير البرامج والمواقع" onclick="location.href='mail.html?service='+encodeURIComponent(this.dataset.service)"><i>01</i><h3>تطوير البرامج والمواقع</h3><p>مواقع وأنظمة وبرامج حسب احتياجات المشروع.</p><span>اطلب الخدمة ←</span></article><article class="service-card" data-service="التصميم والهوية" onclick="location.href='mail.html?service='+encodeURIComponent(this.dataset.service)"><i>02</i><h3>التصميم والهوية</h3><p>لوجوهات وهويات ومنشورات ومحتوى بصري.</p><span>اطلب الخدمة ←</span></article><article class="service-card" data-service="الدعم التقني" onclick="location.href='mail.html?service='+encodeURIComponent(this.dataset.service)"><i>03</i><h3>الدعم التقني</h3><p>حل مشاكل البرامج والأنظمة والإعدادات.</p><span>اطلب الخدمة ←</span></article><article class="service-card" data-service="الاستضافة وإدارة المواقع" onclick="location.href='mail.html?service='+encodeURIComponent(this.dataset.service)"><i>04</i><h3>الاستضافة وإدارة المواقع</h3><p>تشغيل وإدارة ومتابعة المواقع والخدمات.</p><span>اطلب الخدمة ←</span></article><article class="service-card" data-service="خدمات الألعاب" onclick="location.href='mail.html?service='+encodeURIComponent(this.dataset.service)"><i>05</i><h3>خدمات الألعاب</h3><p>حلول تقنية للمشاريع والمنصات والألعاب.</p><span>اطلب الخدمة ←</span></article><article class="service-card" data-service="السوشيال والمحتوى" onclick="location.href='mail.html?service='+encodeURIComponent(this.dataset.service)"><i>06</i><h3>السوشيال والمحتوى</h3><p>مساعدة في المحتوى والحضور الرقمي.</p><span>اطلب الخدمة ←</span></article></div></section><section id="about" class="split"><div><small>ABOUT NILEX</small><h2>شركة واحدة.<br><em>حلول متعددة.</em></h2></div><div><p>NILEX تجمع التطوير والتصميم والدعم التقني والخدمات الرقمية في تجربة واحدة.</p><p>لا توجد أسعار ثابتة؛ يتم تحديد السعر حسب تفاصيل كل مشروع والاتفاق مع الإدارة.</p></div></section><section id="contact" class="contact"><small>LET'S WORK</small><h2>عندك فكرة؟<br>خلينا نبدأ.</h2><p>ابعت تفاصيل مشروعك من نظام المراسلة الداخلي.</p><a class="button" href="mail.html">إرسال طلب للأدمن ←</a></section></main><footer><span class="logo"><b>N</b>NILEX</span><span>© 2026 NILEX</span></footer><script src="script.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta name="theme-color" content="#07100d">
+  <meta name="description" content="NILEX - حلول رقمية متكاملة لتطوير البرامج والمواقع والتصميم والدعم والاستضافة وخدمات الألعاب.">
+
+  <title>NILEX | حلول رقمية متكاملة</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Background -->
+  <div class="bg-grid"></div>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <!-- ================= NAVBAR ================= -->
+  <header class="navbar">
+    <div class="nav-container">
+
+      <a href="#home" class="logo">
+        <span class="logo-mark">N</span>
+        <span class="logo-text">NILEX</span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#home">الرئيسية</a>
+        <a href="#services">الخدمات</a>
+        <a href="#about">عن NILEX</a>
+        <a href="#payment">الدفع</a>
+        <a href="#contact">تواصل معنا</a>
+      </nav>
+
+      <a href="mail.html" class="nav-button">
+        ابدأ مشروعك
+        <span>↗</span>
+      </a>
+
+      <button class="menu-button" id="menuButton" aria-label="فتح القائمة">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+    </div>
+
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="#home">الرئيسية</a>
+      <a href="#services">الخدمات</a>
+      <a href="#about">عن NILEX</a>
+      <a href="#payment">الدفع</a>
+      <a href="#contact">تواصل معنا</a>
+      <a href="mail.html" class="mobile-cta">ابدأ مشروعك</a>
+    </div>
+  </header>
+
+
+  <!-- ================= HERO ================= -->
+  <main>
+
+    <section class="hero section" id="home">
+
+      <div class="hero-content reveal">
+
+        <div class="hero-badge">
+          <span class="status-dot"></span>
+          NILEX DIGITAL SOLUTIONS
+        </div>
+
+        <h1>
+          بنبني فكرتك
+          <span>بشكل مختلف.</span>
+        </h1>
+
+        <p class="hero-description">
+          حلول رقمية متكاملة تساعدك على تحويل أفكارك إلى مشاريع
+          احترافية، سريعة، وقابلة للتطور.
+        </p>
+
+        <div class="hero-buttons">
+          <a href="mail.html" class="primary-button">
+            ابدأ مشروعك
+            <span>↗</span>
+          </a>
+
+          <a href="#services" class="secondary-button">
+            اكتشف خدماتنا
+            <span>↓</span>
+          </a>
+        </div>
+
+        <div class="hero-trust">
+          <div class="trust-line"></div>
+          <span>Technology • Design • Support • Gaming</span>
+        </div>
+
+      </div>
+
+
+      <div class="hero-visual reveal">
+
+        <div class="orbit orbit-1"></div>
+        <div class="orbit orbit-2"></div>
+
+        <div class="hero-card main-card">
+
+          <div class="terminal-top">
+            <div class="terminal-dots">
+              <i></i>
+              <i></i>
+              <i></i>
+            </div>
+
+            <span>NILEX_SYSTEM</span>
+          </div>
+
+          <div class="terminal-content">
+            <div class="terminal-line">
+              <span class="terminal-green">&gt;</span>
+              <span>build_your_idea()</span>
+            </div>
+
+            <div class="terminal-line muted">
+              <span>status:</span>
+              <strong>READY</strong>
+            </div>
+
+            <div class="terminal-line muted">
+              <span>performance:</span>
+              <strong>OPTIMIZED</strong>
+            </div>
+
+            <div class="terminal-line muted">
+              <span>support:</span>
+              <strong>24/7</strong>
+            </div>
+
+            <div class="terminal-progress">
+              <span></span>
+            </div>
+
+            <div class="terminal-ready">
+              SYSTEM READY_
+            </div>
+          </div>
+
+        </div>
+
+        <div class="floating-card card-one">
+          <span class="float-icon">⌘</span>
+          <div>
+            <strong>Development</strong>
+            <small>Web & Software</small>
+          </div>
+        </div>
+
+        <div class="floating-card card-two">
+          <span class="float-icon">◆</span>
+          <div>
+            <strong>Creative</strong>
+            <small>Design & Branding</small>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= STATS ================= -->
+    <section class="stats-section">
+
+      <div class="stats-container">
+
+        <div class="stat-item reveal">
+          <strong>01</strong>
+          <span>فكرة تتحول لمشروع</span>
+        </div>
+
+        <div class="stat-divider"></div>
+
+        <div class="stat-item reveal">
+          <strong>07+</strong>
+          <span>خدمات رقمية</span>
+        </div>
+
+        <div class="stat-divider"></div>
+
+        <div class="stat-item reveal">
+          <strong>24/7</strong>
+          <span>دعم ومتابعة</span>
+        </div>
+
+        <div class="stat-divider"></div>
+
+        <div class="stat-item reveal">
+          <strong>NILEX</strong>
+          <span>Digital Solutions</span>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= SERVICES ================= -->
+    <section class="section services-section" id="services">
+
+      <div class="section-heading reveal">
+
+        <div>
+          <span class="section-label">WHAT WE DO</span>
+
+          <h2>
+            خدماتنا
+            <span>مصممة لنجاحك.</span>
+          </h2>
+        </div>
+
+        <p>
+          من أول الفكرة لحد التنفيذ والدعم،
+          NILEX بتوفر لك مجموعة متكاملة من الحلول الرقمية.
+        </p>
+
+      </div>
+
+
+      <div class="services-grid">
+
+        <article class="service-card reveal" data-service="تطوير البرامج والمواقع">
+
+          <div class="service-number">01</div>
+
+          <div class="service-icon">&lt;/&gt;</div>
+
+          <h3>تطوير البرامج والمواقع</h3>
+
+          <p>
+            تصميم وتطوير مواقع وبرامج حديثة
+            تناسب احتياجات مشروعك.
+          </p>
+
+          <button class="service-link">
+            اطلب الخدمة <span>←</span>
+          </button>
+
+        </article>
+
+
+        <article class="service-card reveal" data-service="التصميم والهوية">
+
+          <div class="service-number">02</div>
+
+          <div class="service-icon">✦</div>
+
+          <h3>التصميم والهوية</h3>
+
+          <p>
+            هوية بصرية وتصاميم تساعد مشروعك
+            يظهر بصورة احترافية ومميزة.
+          </p>
+
+          <button class="service-link">
+            اطلب الخدمة <span>←</span>
+          </button>
+
+        </article>
+
+
+        <article class="service-card reveal" data-service="الدعم التقني">
+
+          <div class="service-number">03</div>
+
+          <div class="service-icon">⚙</div>
+
+          <h3>الدعم التقني</h3>
+
+          <p>
+            مساعدة فنية وحلول للمشاكل التقنية
+            ومتابعة مستمرة.
+          </p>
+
+          <button class="service-link">
+            اطلب الخدمة <span>←</span>
+          </button>
+
+        </article>
+
+
+        <article class="service-card reveal" data-service="الاستضافة وإدارة المواقع">
+
+          <div class="service-number">04</div>
+
+          <div class="service-icon">⌁</div>
+
+          <h3>الاستضافة وإدارة المواقع</h3>
+
+          <p>
+            استضافة وإدارة ومتابعة المواقع
+            لضمان استقرارها وأدائها.
+          </p>
+
+          <button class="service-link">
+            اطلب الخدمة <span>←</span>
+          </button>
+
+        </article>
+
+
+        <article class="service-card reveal" data-service="خدمات الألعاب">
+
+          <div class="service-number">05</div>
+
+          <div class="service-icon">⌁</div>
+
+          <h3>خدمات الألعاب</h3>
+
+          <p>
+            حلول وخدمات تقنية متخصصة
+            لمشاريع الألعاب والـ Gaming.
+          </p>
+
+          <button class="service-link">
+            اطلب الخدمة <span>←</span>
+          </button>
+
+        </article>
+
+
+        <article class="service-card reveal" data-service="السوشيال والمحتوى">
+
+          <div class="service-number">06</div>
+
+          <div class="service-icon">◉</div>
+
+          <h3>السوشيال والمحتوى</h3>
+
+          <p>
+            محتوى وتصاميم وحلول تساعدك
+            في بناء حضورك الرقمي.
+          </p>
+
+          <button class="service-link">
+            اطلب الخدمة <span>←</span>
+          </button>
+
+        </article>
+
+
+        <article class="service-card service-card-wide reveal" data-service="خدمة أخرى / استفسار">
+
+          <div class="service-number">07</div>
+
+          <div class="service-icon">?</div>
+
+          <h3>خدمة أخرى / استفسار</h3>
+
+          <p>
+            عندك فكرة مختلفة؟ ابعتلنا تفاصيلها
+            وإحنا نساعدك نوصل للحل المناسب.
+          </p>
+
+          <button class="service-link">
+            ابدأ المحادثة <span>←</span>
+          </button>
+
+        </article>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= ABOUT ================= -->
+    <section class="section about-section" id="about">
+
+      <div class="about-box reveal">
+
+        <div class="about-content">
+
+          <span class="section-label">ABOUT NILEX</span>
+
+          <h2>
+            مش مجرد خدمة،
+            <span>إحنا بنبني حل.</span>
+          </h2>
+
+          <p>
+            في NILEX بنجمع بين البرمجة والتصميم والدعم
+            والخدمات الرقمية علشان نقدم حلول عملية
+            تناسب كل مشروع واحتياج.
+          </p>
+
+          <a href="mail.html" class="primary-button">
+            تحدث معنا
+            <span>↗</span>
+          </a>
+
+        </div>
+
+
+        <div class="about-visual">
+
+          <div class="about-ring ring-one"></div>
+          <div class="about-ring ring-two"></div>
+
+          <div class="nilex-symbol">
+            <span>N</span>
+            <small>NILEX</small>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= PAYMENT ================= -->
+    <section class="section payment-section" id="payment">
+
+      <div class="section-heading centered reveal">
+
+        <span class="section-label">PAYMENT METHODS</span>
+
+        <h2>
+          طرق الدفع
+          <span>بسهولة.</span>
+        </h2>
+
+        <p>
+          حاليًا يمكنك استخدام طرق الدفع التالية.
+        </p>
+
+      </div>
+
+
+      <div class="payment-grid">
+
+        <article class="payment-card reveal">
+
+          <div class="payment-icon">IP</div>
+
+          <div class="payment-info">
+            <span>InstaPay</span>
+            <strong>01125035655</strong>
+          </div>
+
+          <button class="copy-button" data-copy="01125035655">
+            نسخ
+          </button>
+
+        </article>
+
+
+        <article class="payment-card reveal">
+
+          <div class="payment-icon">EC</div>
+
+          <div class="payment-info">
+            <span>Etisalat Cash</span>
+            <strong>01125035655</strong>
+          </div>
+
+          <button class="copy-button" data-copy="01125035655">
+            نسخ
+          </button>
+
+        </article>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= CONTACT ================= -->
+    <section class="section contact-section" id="contact">
+
+      <div class="contact-wrapper reveal">
+
+        <div class="contact-main">
+
+          <span class="section-label">CONTACT NILEX</span>
+
+          <h2>
+            جاهز تبدأ
+            <span>مشروعك؟</span>
+          </h2>
+
+          <p>
+            تواصل معنا بالطريقة المناسبة ليك،
+            أو ابعت تفاصيل مشروعك مباشرة من نظام المراسلة.
+          </p>
+
+          <a href="mail.html" class="primary-button">
+            ابدأ مشروعك الآن
+            <span>↗</span>
+          </a>
+
+        </div>
+
+
+        <div class="contact-cards">
+
+          <a class="contact-card" href="tel:01125035655">
+
+            <span class="contact-icon">☎</span>
+
+            <div>
+              <small>Phone</small>
+              <strong>01125035655</strong>
+            </div>
+
+            <span class="contact-arrow">↗</span>
+
+          </a>
+
+
+          <a class="contact-card" href="https://wa.me/201125035655" target="_blank" rel="noopener">
+
+            <span class="contact-icon">WA</span>
+
+            <div>
+              <small>WhatsApp</small>
+              <strong>01125035655</strong>
+            </div>
+
+            <span class="contact-arrow">↗</span>
+
+          </a>
+
+
+          <a class="contact-card" href="https://www.facebook.com/NilexCo1/" target="_blank" rel="noopener">
+
+            <span class="contact-icon">f</span>
+
+            <div>
+              <small>Facebook</small>
+              <strong>NilexCo1</strong>
+            </div>
+
+            <span class="contact-arrow">↗</span>
+
+          </a>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="footer">
+
+    <div class="footer-main">
+
+      <div class="footer-brand">
+
+        <a href="#home" class="logo">
+          <span class="logo-mark">N</span>
+          <span class="logo-text">NILEX</span>
+        </a>
+
+        <p>
+          حلول رقمية متكاملة،
+          من الفكرة إلى التنفيذ.
+        </p>
+
+      </div>
+
+
+      <div class="footer-links">
+
+        <div>
+          <span>Navigation</span>
+          <a href="#home">الرئيسية</a>
+          <a href="#services">الخدمات</a>
+          <a href="#about">عن NILEX</a>
+        </div>
+
+        <div>
+          <span>Contact</span>
+          <a href="tel:01125035655">01125035655</a>
+          <a href="https://wa.me/201125035655" target="_blank">WhatsApp</a>
+          <a href="https://www.facebook.com/NilexCo1/" target="_blank">Facebook</a>
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="footer-bottom">
+
+      <span>
+        © <span id="year"></span> NILEX. All rights reserved.
+      </span>
+
+      <span>
+        Built with NILEX
+      </span>
+
+    </div>
+
+  </footer>
+
+
+  <div class="toast" id="toast">
+    تم نسخ الرقم ✓
+  </div>
+
+
+  <script src="script.js"></script>
+
+</body>
+</html>

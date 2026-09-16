@@ -25,13 +25,11 @@
     <h1>إنشاء حساب</h1>
     <label>اسم المستخدم</label>
     <input id="registerUsername" placeholder="alone" autocomplete="username">
-    <div class="internal-email-preview">
-      <span>البريد الداخلي</span><strong id="registerEmailPreview">@nilex</strong>
-    </div>
-    <label>الاسم الظاهر</label>
-    <input id="registerDisplayName" placeholder="اسمك الذي سيظهر للآخرين">
-    <label>كلمة المرور</label><input id="registerPassword" type="password" autocomplete="new-password">
-    <div class="hint">البريد الذي يظهر لك هو <b>username@nilex</b>، أما نظام الدخول الداخلي فيستخدم عنوانًا تقنيًا مخفيًا حتى يقبل Supabase الحساب.</div>
+    <label>البريد الداخلي</label>
+    <input id="registerEmailPreview" value="@nilex" readonly>
+    <label>كلمة المرور</label>
+    <input id="registerPassword" type="password" autocomplete="new-password">
+    <div class="hint">البريد الداخلي بيتملّى تلقائيًا من اسم المستخدم، مثل: <b>alone@nilex</b>.</div>
     <div id="registerError" class="error"></div>
     <button id="registerBtn">إنشاء الحساب</button>
     <button id="backLoginBtn" class="link">العودة لتسجيل الدخول</button>

@@ -43,14 +43,13 @@ async function login(){
 function updateEmailPreview(){
   const u=$("registerUsername").value.trim().toLowerCase().replace(/[^a-z0-9._-]/g,"");
   if($("registerUsername").value!==u)$("registerUsername").value=u;
-  $("registerEmailPreview").textContent=u?u+"@nilex":"@nilex";
-  if(!$('registerDisplayName').value.trim() && u) $('registerDisplayName').value=u;
+  $("registerEmailPreview").value=u?u+"@nilex":"@nilex";
 }
 
 async function register(){
   err("registerError");
   const u=$("registerUsername").value.trim().toLowerCase();
-  const d=$("registerDisplayName").value.trim()||u;
+  const d=u;
   const p=$("registerPassword").value;
   if(!/^[a-z0-9._-]{3,30}$/.test(u))return err("registerError","اسم المستخدم يجب أن يكون 3-30 حرفًا بالإنجليزية والأرقام و . _ - فقط.");
   if(p.length<6)return err("registerError","كلمة المرور يجب أن تكون 6 أحرف على الأقل.");
@@ -174,6 +173,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("backLoginBtn").onclick=()=>screen("loginScreen");
   $("registerBtn").onclick=register;
   $("registerUsername").addEventListener("input",updateEmailPreview);
+  updateEmailPreview();
   $("newMessageBtn").onclick=()=>compose();
   $("adminComposeBtn").onclick=()=>compose();
   $("cancelComposeBtn").onclick=back;

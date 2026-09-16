@@ -1,32 +1,252 @@
-<!doctype html>
-<html lang="en" dir="ltr">
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NILEX Mail</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="mail.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NILEX Mail</title>
+
+    <link rel="stylesheet" href="mail.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="mail-page">
-<header class="header"><div class="container nav">
-<a class="brand" href="index.html"><span class="brand-mark">N</span><span>NILEX</span></a>
-<div class="nav-actions"><button id="lang" class="lang">العربية</button><a class="top-btn" href="index.html" data-i18n="back">Back to NILEX ↗</a></div>
-</div></header>
-<main class="mail-main"><div class="container">
-<section id="auth" class="mail-auth">
-<div class="mail-logo"><span>N</span></div>
-<div class="mail-heading"><small data-i18n="mailK">NILEX MAIL</small><h1 data-i18n="mailTitle">Send your request to Admin.</h1><p data-i18n="mailIntro">Create your NILEX account, then send your project request directly to the Admin.</p></div>
-<div class="auth-tabs"><button class="active" data-tab="login" data-i18n="loginTab">Login</button><button data-tab="signup" data-i18n="signupTab">Create Email</button></div>
-<form id="loginForm" class="auth-form"><label><span data-i18n="username">Username</span><input id="loginUser" autocomplete="username" placeholder="username" required></label><label><span data-i18n="password">Password</span><input id="loginPass" type="password" autocomplete="current-password" required></label><button class="btn primary" type="submit" data-i18n="login">Login ↗</button><p class="form-note" id="loginNote"></p></form>
-<form id="signupForm" class="auth-form hidden"><label><span data-i18n="chooseUser">Choose username</span><input id="signupUser" maxlength="24" placeholder="username" required></label><div class="email-preview"><span id="previewUser">username</span><b>@nilex</b></div><label><span data-i18n="choosePass">Choose password</span><input id="signupPass" type="password" minlength="4" autocomplete="new-password" required></label><label><span data-i18n="confirmPass">Confirm password</span><input id="signupPass2" type="password" minlength="4" autocomplete="new-password" required></label><button class="btn primary" type="submit" data-i18n="create">Create Email ↗</button><p class="form-note" id="signupNote"></p></form>
-<p class="demo-note" data-i18n="demoNote">Your account and messages are saved securely in NILEX.</p>
-</section>
-<section id="mailApp" class="mail-app hidden">
-<div class="mail-top"><div><small>NILEX MAIL</small><h1 id="accountTitle">ahmed@nilex</h1></div><div class="mail-top-actions"><a id="homeBtn" class="ghost-btn" href="index.html" data-i18n="home">Home</a><button id="logout" class="ghost-btn" data-i18n="logout">Log out</button></div></div>
-<div id="adminTools" class="admin-tools hidden"><label><span data-i18n="displayName">Sender name</span><input id="adminDisplayName" type="text" data-i18n-placeholder="adminNamePlaceholder" placeholder="Admin name"><button id="saveAdminName" class="small-btn" type="button" data-i18n="saveName">Save name</button><p class="form-note" id="adminNameNote"></p></label></div><div class="mail-layout"><aside class="mail-sidebar"><button class="compose-btn" id="compose" data-i18n="compose">+ Compose</button><button class="folder active" data-folder="inbox" data-i18n="inbox">Inbox <b id="inboxCount">0</b></button><button class="folder" data-folder="sent" data-i18n="sent">Sent</button><div class="sidebar-bottom"><span data-i18n="localOnly">Local NILEX account</span></div></aside>
-<section class="mail-content"><div id="listView"><div class="list-head"><h2 id="folderTitle">Inbox</h2><button id="refresh" class="small-btn" data-i18n="refresh">Refresh</button></div><div id="messageList" class="message-list"></div></div>
-<div id="composeView" class="compose-view hidden"><div class="list-head"><h2 data-i18n="newMessage">New message</h2><button id="cancelCompose" class="small-btn" data-i18n="cancel">Cancel</button></div><form id="composeForm"><label><span data-i18n="to">To</span><input id="toUser" value="admin@nilex" readonly required></label><div id="adminNameField" class="hidden"></div><label><span data-i18n="subject">Subject</span><input id="subject" required></label><label><span data-i18n="body">Message</span><textarea id="body" rows="9" required></textarea></label><button class="btn primary" type="submit" data-i18n="sendMail">Send Mail ↗</button><p class="form-note" id="sendNote"></p></form></div></section></div>
-</section>
-</div></main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="mail.js"></script>
-</body></html>
+
+<body>
+
+<div class="app">
+
+    <!-- LOGIN -->
+    <section id="loginScreen" class="screen">
+        <div class="auth-card">
+
+            <div class="logo">NILEX</div>
+            <div class="subtitle">NILEX Mail</div>
+
+            <h1>تسجيل الدخول</h1>
+
+            <input
+                id="loginUsername"
+                type="text"
+                placeholder="Username أو Email"
+                autocomplete="username"
+            >
+
+            <input
+                id="loginPassword"
+                type="password"
+                placeholder="كلمة المرور"
+                autocomplete="current-password"
+            >
+
+            <button id="loginBtn">تسجيل الدخول</button>
+
+            <button id="showRegisterBtn" class="secondary">
+                إنشاء حساب
+            </button>
+
+            <div id="loginError" class="error"></div>
+
+        </div>
+    </section>
+
+
+    <!-- REGISTER -->
+    <section id="registerScreen" class="screen hidden">
+        <div class="auth-card">
+
+            <div class="logo">NILEX</div>
+
+            <h1>إنشاء حساب</h1>
+
+            <input
+                id="registerUsername"
+                type="text"
+                placeholder="Username"
+                autocomplete="username"
+            >
+
+            <input
+                id="registerPassword"
+                type="password"
+                placeholder="كلمة المرور"
+                autocomplete="new-password"
+            >
+
+            <input
+                id="registerDisplayName"
+                type="text"
+                placeholder="الاسم"
+            >
+
+            <button id="registerBtn">إنشاء الحساب</button>
+
+            <button id="backLoginBtn" class="secondary">
+                العودة لتسجيل الدخول
+            </button>
+
+            <div id="registerError" class="error"></div>
+
+        </div>
+    </section>
+
+
+    <!-- MAIL APP -->
+    <section id="mailScreen" class="mail-screen hidden">
+
+        <header class="topbar">
+
+            <div>
+                <div class="brand">NILEX</div>
+                <div id="welcomeText" class="welcome"></div>
+            </div>
+
+            <div class="top-actions">
+
+                <button id="homeBtn" class="secondary">
+                    الرئيسية
+                </button>
+
+                <button id="logoutBtn" class="logout">
+                    تسجيل الخروج
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <main class="mail-layout">
+
+            <!-- SIDEBAR -->
+            <aside class="sidebar">
+
+                <h2>إرسال طلبك للأدمن</h2>
+
+                <button id="newMessageBtn" class="new-message">
+                    + رسالة جديدة
+                </button>
+
+                <button class="folder active" data-folder="inbox">
+                    📥 الوارد
+                    <span id="inboxCount">0</span>
+                </button>
+
+                <button class="folder" data-folder="sent">
+                    📤 المرسل
+                </button>
+
+                <div id="adminControls" class="admin-controls hidden">
+
+                    <div class="admin-title">
+                        لوحة الأدمن
+                    </div>
+
+                    <button id="adminComposeBtn" class="folder">
+                        ✉ إرسال رسالة
+                    </button>
+
+                    <button id="refreshBtn" class="folder">
+                        🔄 تحديث
+                    </button>
+
+                </div>
+
+            </aside>
+
+
+            <!-- CONTENT -->
+            <section class="content">
+
+                <div id="listView">
+
+                    <div class="content-header">
+                        <h2 id="folderTitle">الوارد</h2>
+                    </div>
+
+                    <div id="messagesList" class="messages-list">
+                        <div class="loading">
+                            جاري التحميل...
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <!-- MESSAGE VIEW -->
+                <div id="messageView" class="message-view hidden">
+
+                    <button id="backToListBtn" class="back-btn">
+                        ← رجوع
+                    </button>
+
+                    <div id="messageContent"></div>
+
+                </div>
+
+
+                <!-- COMPOSE -->
+                <div id="composeView" class="compose-view hidden">
+
+                    <button id="cancelComposeBtn" class="back-btn">
+                        ← رجوع
+                    </button>
+
+                    <h2 id="composeTitle">
+                        إرسال طلبك للأدمن
+                    </h2>
+
+                    <div id="recipientBox" class="field hidden">
+
+                        <label>إلى</label>
+
+                        <input
+                            id="recipientInput"
+                            type="text"
+                            placeholder="username@nilex"
+                        >
+
+                    </div>
+
+                    <div class="field">
+
+                        <label>الموضوع</label>
+
+                        <input
+                            id="subjectInput"
+                            type="text"
+                            placeholder="موضوع الرسالة"
+                        >
+
+                    </div>
+
+                    <div class="field">
+
+                        <label>الرسالة</label>
+
+                        <textarea
+                            id="bodyInput"
+                            placeholder="اكتب رسالتك هنا..."
+                        ></textarea>
+
+                    </div>
+
+                    <button id="sendMessageBtn" class="send-btn">
+                        إرسال
+                    </button>
+
+                    <div id="composeError" class="error"></div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </section>
+
+</div>
+
+<script src="mail.js"></script>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-```javascript
+
 "use strict";
 
 // =========================================================
@@ -1664,4 +1664,4 @@ window.openMessage = openMessage;
 window.changeFolder = changeFolder;
 window.sendNormalMessage = sendNormalMessage;
 window.adminSendMessage = adminSendMessage;
-```
+

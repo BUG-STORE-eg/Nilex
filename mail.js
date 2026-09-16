@@ -1,50 +1,1183 @@
-const SUPABASE_URL = 'https://loqwcsxdqgasgokfmswi.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_vkNXRSYz-hz_PxJCXGwdhg__0-Jmlsx';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL = "https://loqwcsxdqgasgokfmswi.supabase.co";
 
-const MT={en:{back:'Back to NILEX ↗',home:'Home',mailK:'NILEX MAIL',mailTitle:'Send your request to Admin.',mailIntro:'Create your NILEX account, then send your project request directly to the Admin.',loginTab:'Login',signupTab:'Create Email',username:'Username',password:'Password',login:'Login ↗',chooseUser:'Choose username',choosePass:'Choose password',confirmPass:'Confirm password',create:'Create Email ↗',demoNote:'Your account and messages are saved securely in NILEX.',logout:'Log out',compose:'+ Compose',inbox:'Inbox',sent:'Sent',refresh:'Refresh',newMessage:'New message',cancel:'Cancel',to:'To',subject:'Subject',body:'Message',sendMail:'Send Mail ↗',emptyInbox:'Your inbox is empty.',emptySent:'No sent messages yet.',badLogin:'Username or password is incorrect.',exists:'This username already exists.',created:'Email created. You are now logged in.',passMismatch:'Passwords do not match.',invalidUser:'Use only letters, numbers, dots, underscores or hyphens.',selfMail:'You cannot send a message to yourself.',notFound:'This NILEX user does not exist.',sentOk:'Message sent successfully.',from:'From',you:'You',reply:'Reply',displayName:'Sender name',saveName:'Save name',nameSaved:'Name saved.',adminNamePlaceholder:'Admin name',replySubject:'Re:',adminOnly:'Admin only',loading:'Loading...',readError:'Could not load messages.',sendError:'Could not send the message.',authError:'Could not connect to NILEX.',confirmEmail:'Check your email to confirm the account, then log in.',profileError:'Account was created but profile setup failed.'},ar:{back:'العودة إلى NILEX ↗',home:'الرئيسية',mailK:'NILEX MAIL',mailTitle:'إرسال طلبك للأدمن',mailIntro:'أنشئ إيميل NILEX الخاص بك، وبعدها ابعت طلب مشروعك مباشرة للأدمن.',loginTab:'تسجيل الدخول',signupTab:'إنشاء إيميل',username:'اسم المستخدم',password:'كلمة المرور',login:'دخول ↗',chooseUser:'اختر اسم المستخدم',choosePass:'اختر كلمة المرور',confirmPass:'تأكيد كلمة المرور',create:'إنشاء الإيميل ↗',demoNote:'حسابك ورسائلك محفوظين بأمان في NILEX.',logout:'تسجيل الخروج',compose:'+ رسالة جديدة',inbox:'الوارد',sent:'المرسل',refresh:'تحديث',newMessage:'رسالة جديدة',cancel:'إلغاء',to:'إلى',subject:'الموضوع',body:'الرسالة',sendMail:'إرسال الرسالة ↗',emptyInbox:'مفيش رسائل في الوارد.',emptySent:'مفيش رسائل مرسلة لسه.',badLogin:'اسم المستخدم أو كلمة المرور غلط.',exists:'اسم المستخدم ده موجود بالفعل.',created:'تم إنشاء الإيميل وتسجيل الدخول.',passMismatch:'كلمتا المرور غير متطابقتين.',invalidUser:'استخدم حروف وأرقام ونقطة أو _ أو - فقط.',selfMail:'مينفعش تبعت لنفسك.',notFound:'مستخدم NILEX ده مش موجود.',sentOk:'تم إرسال الرسالة بنجاح.',from:'من',you:'أنت',reply:'رد',displayName:'اسم المرسل',saveName:'حفظ الاسم',nameSaved:'تم حفظ الاسم.',adminNamePlaceholder:'اسم الأدمن',replySubject:'رد:',adminOnly:'للأدمن فقط',loading:'جاري التحميل...',readError:'حصلت مشكلة في تحميل الرسائل.',sendError:'حصلت مشكلة في إرسال الرسالة.',authError:'حصلت مشكلة في الاتصال بـNILEX.',confirmEmail:'راجع بريدك لتأكيد الحساب، وبعدها سجل الدخول.',profileError:'الحساب اتعمل لكن إعداد بياناته حصل فيه خطأ.'}};
-const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
-let lang=localStorage.getItem('nilexLang')||'en';
-let currentFolder='inbox';
-let currentUser=null;
-let profileCache=[];
-function t(k){return MT[lang][k]||k}
-function escapeHtml(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-function usernameFromEmail(email){return (email||'').split('@')[0].toLowerCase()}
-function localEmail(username){return `${username}@nilex`}
-function authEmail(username){return `${username}@nilex.local`}
-function applyLang(){document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.body.classList.toggle('rtl',lang==='ar');$$('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));$('#lang').textContent=lang==='ar'?'English':'العربية';}
-$('#lang').onclick=()=>{lang=lang==='en'?'ar':'en';localStorage.setItem('nilexLang',lang);applyLang();if(currentUser)renderApp()};
-$$('.auth-tabs button').forEach(b=>b.onclick=()=>{$$('.auth-tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#loginForm').classList.toggle('hidden',b.dataset.tab!=='login');$('#signupForm').classList.toggle('hidden',b.dataset.tab!=='signup')});
-$('#signupUser').oninput=()=>$('#previewUser').textContent=$('#signupUser').value.toLowerCase().replace(/[^a-z0-9._-]/g,'');
-async function ensureProfile(user, roleHint='user'){
-  const {data:existing,error:getErr}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
-  if(getErr) throw getErr;
-  if(existing)return existing;
-  const username=usernameFromEmail(user.email);
-  const {data,error}=await sb.from('profiles').insert({id:user.id,username,email:user.email,display_name:username==='admin'?'NILEX Admin':username,role:roleHint}).select().single();
-  if(error)throw error;
-  return data;
+const SUPABASE_KEY =
+    "sb_publishable_vkNXRSYz-hz_PxJCXGwdhg__0-Jmlsx";
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+/* =========================
+   STATE
+========================= */
+
+let currentUser = null;
+let currentProfile = null;
+let currentFolder = "inbox";
+let currentMessages = [];
+let composeMode = "user";
+
+
+/* =========================
+   ELEMENTS
+========================= */
+
+const loginScreen = document.getElementById("loginScreen");
+const registerScreen = document.getElementById("registerScreen");
+const mailScreen = document.getElementById("mailScreen");
+
+const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+const loginError = document.getElementById("loginError");
+
+const registerUsername = document.getElementById("registerUsername");
+const registerPassword = document.getElementById("registerPassword");
+const registerDisplayName = document.getElementById("registerDisplayName");
+const registerError = document.getElementById("registerError");
+
+const welcomeText = document.getElementById("welcomeText");
+const adminControls = document.getElementById("adminControls");
+
+const messagesList = document.getElementById("messagesList");
+const folderTitle = document.getElementById("folderTitle");
+const inboxCount = document.getElementById("inboxCount");
+
+const listView = document.getElementById("listView");
+const messageView = document.getElementById("messageView");
+const composeView = document.getElementById("composeView");
+
+const messageContent = document.getElementById("messageContent");
+
+const recipientBox = document.getElementById("recipientBox");
+const recipientInput = document.getElementById("recipientInput");
+const subjectInput = document.getElementById("subjectInput");
+const bodyInput = document.getElementById("bodyInput");
+
+const composeTitle = document.getElementById("composeTitle");
+const composeError = document.getElementById("composeError");
+
+
+/* =========================
+   HELPERS
+========================= */
+
+function showOnly(screen) {
+    loginScreen.classList.add("hidden");
+    registerScreen.classList.add("hidden");
+    mailScreen.classList.add("hidden");
+
+    screen.classList.remove("hidden");
 }
-async function signUp(e){e.preventDefault();let u=$('#signupUser').value.trim().toLowerCase(),p=$('#signupPass').value,p2=$('#signupPass2').value,note=$('#signupNote');note.textContent='';if(!/^[a-z0-9._-]{3,24}$/.test(u)){note.textContent=t('invalidUser');return}if(u==='admin'){note.textContent=t('exists');return}if(p!==p2){note.textContent=t('passMismatch');return}try{const {data,error}=await sb.auth.signUp({email:authEmail(u),password:p});if(error){note.textContent=error.message.toLowerCase().includes('already')?t('exists'):error.message;return}if(data.user&&data.session){await ensureProfile(data.user,'user');note.textContent=t('created');setTimeout(loadSession,250)}else{note.textContent=t('confirmEmail')}}catch(err){note.textContent=t('authError')}}
-async function login(e){e.preventDefault();$('#loginNote').textContent=t('loading');let raw=$('#loginUser').value.trim().toLowerCase(),u=usernameFromEmail(raw.includes('@')?raw:authEmail(raw));let p=$('#loginPass').value;try{const {error}=await sb.auth.signInWithPassword({email:authEmail(u),password:p});if(error){$('#loginNote').textContent=t('badLogin');return}await loadSession()}catch(err){$('#loginNote').textContent=t('authError')}}
-$('#signupForm').onsubmit=signUp;$('#loginForm').onsubmit=login;
-async function loadSession(){const {data:{session}}=await sb.auth.getSession();if(!session){currentUser=null;showAuth();return}try{currentUser=await ensureProfile(session.user, usernameFromEmail(session.user.email)==='admin'?'admin':'user');showApp()}catch(err){$('#loginNote').textContent=t('profileError')}}
-function showAuth(){$('#auth').classList.remove('hidden');$('#mailApp').classList.add('hidden')}
-function showApp(){$('#auth').classList.add('hidden');$('#mailApp').classList.remove('hidden');renderApp()}
-$('#logout').onclick=async()=>{await sb.auth.signOut();currentUser=null;showAuth()};
-$('#homeBtn').onclick=()=>{};
-async function getProfiles(){let query=sb.from('profiles').select('*');if(currentUser?.role!=='admin')query=query.or(`id.eq.${currentUser.id},role.eq.admin`);const {data,error}=await query; if(error)throw error;profileCache=data||[];return profileCache}
-function profileById(id){return profileCache.find(p=>p.id===id)}
-function senderName(id){const p=profileById(id);return p?.display_name||p?.username||'NILEX'}
-function senderLabel(id){const p=profileById(id);return `${escapeHtml(senderName(id))} <span class="muted-mail">&lt;${escapeHtml(p?.username||'user')}@nilex&gt;</span>`}
-async function renderApp(){if(!currentUser)return;$('#accountTitle').textContent=localEmail(currentUser.username);$('#adminTools').classList.toggle('hidden',currentUser.role!=='admin');if(currentUser.role==='admin')$('#adminDisplayName').value=currentUser.display_name||'NILEX Admin';try{await getProfiles();const {data:msgs,error}=await sb.from('messages').select('*').or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`).order('created_at',{ascending:false});if(error)throw error;let filtered=(msgs||[]).filter(m=>currentFolder==='inbox'?m.receiver_id===currentUser.id:m.sender_id===currentUser.id);$('#folderTitle').textContent=currentFolder==='inbox'?t('inbox'):t('sent');const unread=(msgs||[]).filter(m=>m.receiver_id===currentUser.id&&!m.is_read).length;$('#inboxCount').textContent=unread;const list=$('#messageList');if(!filtered.length){list.innerHTML=`<div class="empty">${currentFolder==='inbox'?t('emptyInbox'):t('emptySent')}</div>`;return}list.innerHTML=filtered.map(m=>`<article class="message ${m.receiver_id===currentUser.id&&!m.is_read?'unread':''}" data-id="${m.id}"><div class="message-main"><div><div class="message-from">${m.sender_id===currentUser.id?t('you'):senderLabel(m.sender_id)}</div><div class="message-subject">${escapeHtml(m.subject)}</div><div class="message-preview">${escapeHtml(m.body)}</div></div><div class="message-date">${new Date(m.created_at).toLocaleString(lang==='ar'?'ar-EG':'en-US')}</div></div></article>`).join('');$$('.message').forEach(el=>el.onclick=()=>openMessage(el.dataset.id))}catch(err){$('#messageList').innerHTML=`<div class="empty">${t('readError')}</div>`}}
-async function openMessage(id){const {data:m,error}=await sb.from('messages').select('*').eq('id',id).single();if(error||!m)return;if(m.receiver_id===currentUser.id&&!m.is_read){await sb.from('messages').update({is_read:true}).eq('id',id)}const otherId=m.sender_id===currentUser.id?m.receiver_id:m.sender_id;const other=profileById(otherId);const sender=m.sender_id===currentUser.id?t('you'):senderLabel(m.sender_id);const detail=`${t('from')}: ${sender}\n\n${m.subject}\n\n${m.body}`;if(confirm(detail+'\n\n'+t('reply')+'?'))openCompose(other?.username||'',m.subject.startsWith('Re:')?m.subject:`${t('replySubject')} ${m.subject}`);else renderApp()}
-$$('.folder').forEach(b=>b.onclick=()=>{currentFolder=b.dataset.folder;$$('.folder').forEach(x=>x.classList.toggle('active',x===b));$('#composeView').classList.add('hidden');$('#listView').classList.remove('hidden');renderApp()});
-$('#refresh').onclick=renderApp;
-function openCompose(recipient='',subject=''){let isAdmin=currentUser.role==='admin';$('#listView').classList.add('hidden');$('#composeView').classList.remove('hidden');$('#sendNote').textContent='';$('#composeForm').reset();$('#toUser').readOnly=!isAdmin;$('#toUser').value=recipient?localEmail(recipient):(isAdmin?'':'admin@nilex');$('#subject').value=subject;$('#adminNameField').classList.toggle('hidden',!isAdmin);if(isAdmin)$('#adminDisplayName').value=currentUser.display_name||'NILEX Admin'}
-$('#compose').onclick=()=>openCompose();
-$('#cancelCompose').onclick=()=>{$('#composeView').classList.add('hidden');$('#listView').classList.remove('hidden');$('#composeForm').reset();};
-$('#saveAdminName').onclick=async()=>{let name=$('#adminDisplayName').value.trim();if(!name)return;const {data,error}=await sb.from('profiles').update({display_name:name}).eq('id',currentUser.id).select().single();if(!error){currentUser=data;$('#adminNameNote').textContent=t('nameSaved');renderApp()}};
-$('#composeForm').onsubmit=async e=>{e.preventDefault();let raw=$('#toUser').value.trim().toLowerCase(),toUsername=usernameFromEmail(raw);if(currentUser.role!=='admin')toUsername='admin';if(toUsername===currentUser.username){$('#sendNote').textContent=t('selfMail');return}try{const target=profileCache.find(p=>p.username===toUsername);if(!target){$('#sendNote').textContent=t('notFound');return}const subject=$('#subject').value.trim(),body=$('#body').value.trim();const {error}=await sb.from('messages').insert({sender_id:currentUser.id,receiver_id:target.id,subject,body});if(error)throw error;$('#sendNote').textContent=t('sentOk');$('#composeForm').reset();setTimeout(()=>{$('#composeView').classList.add('hidden');$('#listView').classList.remove('hidden');currentFolder='sent';$$('.folder').forEach(x=>x.classList.toggle('active',x.dataset.folder==='sent'));renderApp()},500)}catch(err){$('#sendNote').textContent=t('sendError')}};
-applyLang();loadSession();
+
+
+function showError(element, message) {
+    element.textContent = message || "";
+}
+
+
+function escapeHTML(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+function formatDate(date) {
+    try {
+        return new Date(date).toLocaleString("ar-EG", {
+            dateStyle: "medium",
+            timeStyle: "short"
+        });
+    } catch {
+        return "";
+    }
+}
+
+
+/* =========================
+   LOGIN
+========================= */
+
+async function login() {
+
+    showError(loginError, "");
+
+    const usernameOrEmail =
+        loginUsername.value.trim();
+
+    const password =
+        loginPassword.value;
+
+    if (!usernameOrEmail || !password) {
+        showError(
+            loginError,
+            "اكتب اسم المستخدم وكلمة المرور."
+        );
+        return;
+    }
+
+    let email = usernameOrEmail;
+
+    /*
+       لو المستخدم كتب username فقط:
+       نحاول نجيب الإيميل من profiles.
+    */
+
+    if (!usernameOrEmail.includes("@")) {
+
+        const { data, error } =
+            await supabaseClient
+                .from("profiles")
+                .select("email")
+                .eq("username", usernameOrEmail)
+                .maybeSingle();
+
+        if (error) {
+
+            console.error(error);
+
+            showError(
+                loginError,
+                "حصل خطأ أثناء البحث عن الحساب."
+            );
+
+            return;
+        }
+
+        if (!data) {
+
+            showError(
+                loginError,
+                "اسم المستخدم أو كلمة المرور غلط."
+            );
+
+            return;
+        }
+
+        email = data.email;
+    }
+
+    const {
+        data,
+        error
+    } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+    });
+
+    if (error) {
+
+        console.error(error);
+
+        showError(
+            loginError,
+            "اسم المستخدم أو كلمة المرور غلط."
+        );
+
+        return;
+    }
+
+    currentUser = data.user;
+
+    await loadProfile();
+
+}
+
+
+/* =========================
+   PROFILE
+========================= */
+
+async function loadProfile() {
+
+    if (!currentUser) {
+        showOnly(loginScreen);
+        return;
+    }
+
+    /*
+       أهم جزء في الإصلاح:
+       نقرأ Profile الخاص بالمستخدم الحالي
+       مباشرة عن طريق id = auth.uid().
+    */
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("profiles")
+        .select(`
+            id,
+            username,
+            email,
+            display_name,
+            role
+        `)
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+    console.log("PROFILE:", data);
+    console.log("PROFILE ERROR:", error);
+
+    if (error) {
+
+        console.error(error);
+
+        showError(
+            loginError,
+            "تم تسجيل الدخول، لكن حصل خطأ أثناء تحميل بيانات الحساب."
+        );
+
+        await supabaseClient.auth.signOut();
+
+        showOnly(loginScreen);
+
+        return;
+    }
+
+    if (!data) {
+
+        showError(
+            loginError,
+            "الحساب موجود لكن بياناته غير موجودة في profiles."
+        );
+
+        await supabaseClient.auth.signOut();
+
+        showOnly(loginScreen);
+
+        return;
+    }
+
+    currentProfile = data;
+
+    showMailScreen();
+
+}
+
+
+/* =========================
+   SHOW MAIL
+========================= */
+
+async function showMailScreen() {
+
+    showOnly(mailScreen);
+
+    const name =
+        currentProfile.display_name ||
+        currentProfile.username;
+
+    welcomeText.textContent =
+        `مرحباً ${name}`;
+
+    if (currentProfile.role === "admin") {
+
+        adminControls.classList.remove("hidden");
+
+    } else {
+
+        adminControls.classList.add("hidden");
+    }
+
+    openList();
+
+    await loadMessages();
+}
+
+
+/* =========================
+   LOAD MESSAGES
+========================= */
+
+async function loadMessages() {
+
+    if (!currentUser) return;
+
+    messagesList.innerHTML =
+        `<div class="loading">جاري التحميل...</div>`;
+
+    let query =
+        supabaseClient
+            .from("messages")
+            .select(`
+                id,
+                sender_id,
+                receiver_id,
+                subject,
+                body,
+                is_read,
+                created_at,
+                sender:profiles!messages_sender_id_fkey(
+                    username,
+                    email,
+                    display_name
+                ),
+                receiver:profiles!messages_receiver_id_fkey(
+                    username,
+                    email,
+                    display_name
+                )
+            `)
+            .order("created_at", {
+                ascending: false
+            });
+
+    if (currentFolder === "inbox") {
+
+        query =
+            query.eq(
+                "receiver_id",
+                currentUser.id
+            );
+
+        folderTitle.textContent = "الوارد";
+
+    } else {
+
+        query =
+            query.eq(
+                "sender_id",
+                currentUser.id
+            );
+
+        folderTitle.textContent = "المرسل";
+    }
+
+    const {
+        data,
+        error
+    } = await query;
+
+    if (error) {
+
+        console.error(error);
+
+        messagesList.innerHTML = `
+            <div class="empty">
+                حصل خطأ أثناء تحميل الرسائل.
+            </div>
+        `;
+
+        return;
+    }
+
+    currentMessages = data || [];
+
+    renderMessages();
+
+    updateInboxCount();
+
+}
+
+
+/* =========================
+   RENDER
+========================= */
+
+function renderMessages() {
+
+    if (!currentMessages.length) {
+
+        messagesList.innerHTML = `
+            <div class="empty">
+                لا توجد رسائل هنا.
+            </div>
+        `;
+
+        return;
+    }
+
+    messagesList.innerHTML =
+        currentMessages.map(message => {
+
+            const person =
+                currentFolder === "inbox"
+                    ? message.sender
+                    : message.receiver;
+
+            const name =
+                person?.display_name ||
+                person?.username ||
+                person?.email ||
+                "مستخدم";
+
+            return `
+                <div
+                    class="message-item ${
+                        !message.is_read &&
+                        currentFolder === "inbox"
+                            ? "unread"
+                            : ""
+                    }"
+                    data-id="${message.id}"
+                >
+
+                    <div class="message-top">
+
+                        <div class="message-sender">
+                            ${escapeHTML(name)}
+                        </div>
+
+                        <div class="message-date">
+                            ${formatDate(message.created_at)}
+                        </div>
+
+                    </div>
+
+                    <div class="message-subject">
+                        ${escapeHTML(
+                            message.subject || "(بدون موضوع)"
+                        )}
+                    </div>
+
+                    <div class="message-preview">
+                        ${escapeHTML(message.body)}
+                    </div>
+
+                </div>
+            `;
+
+        }).join("");
+
+    document
+        .querySelectorAll(".message-item")
+        .forEach(element => {
+
+            element.addEventListener(
+                "click",
+                () => openMessage(
+                    Number(element.dataset.id)
+                )
+            );
+
+        });
+}
+
+
+/* =========================
+   OPEN MESSAGE
+========================= */
+
+async function openMessage(id) {
+
+    const message =
+        currentMessages.find(
+            item => Number(item.id) === id
+        );
+
+    if (!message) return;
+
+    const sender =
+        message.sender?.display_name ||
+        message.sender?.username ||
+        message.sender?.email ||
+        "مستخدم";
+
+    const receiver =
+        message.receiver?.display_name ||
+        message.receiver?.username ||
+        message.receiver?.email ||
+        "مستخدم";
+
+    messageContent.innerHTML = `
+        <div class="message-card">
+
+            <h1>
+                ${escapeHTML(
+                    message.subject || "(بدون موضوع)"
+                )}
+            </h1>
+
+            <div class="message-meta">
+
+                <div>
+                    <strong>من:</strong>
+                    ${escapeHTML(sender)}
+                </div>
+
+                <div>
+                    <strong>إلى:</strong>
+                    ${escapeHTML(receiver)}
+                </div>
+
+                <div>
+                    ${formatDate(message.created_at)}
+                </div>
+
+            </div>
+
+            <div class="message-body">
+                ${escapeHTML(message.body)}
+            </div>
+
+        </div>
+    `;
+
+    openMessageView();
+
+    /*
+       Mark as read
+    */
+
+    if (
+        !message.is_read &&
+        message.receiver_id === currentUser.id
+    ) {
+
+        const { error } =
+            await supabaseClient
+                .from("messages")
+                .update({
+                    is_read: true
+                })
+                .eq("id", message.id)
+                .eq("receiver_id", currentUser.id);
+
+        if (!error) {
+            message.is_read = true;
+            updateInboxCount();
+        }
+    }
+}
+
+
+/* =========================
+   INBOX COUNT
+========================= */
+
+async function updateInboxCount() {
+
+    if (!currentUser) return;
+
+    const {
+        count,
+        error
+    } = await supabaseClient
+        .from("messages")
+        .select("id", {
+            count: "exact",
+            head: true
+        })
+        .eq("receiver_id", currentUser.id)
+        .eq("is_read", false);
+
+    if (!error) {
+        inboxCount.textContent = count || 0;
+    }
+}
+
+
+/* =========================
+   VIEWS
+========================= */
+
+function openList() {
+
+    listView.classList.remove("hidden");
+    messageView.classList.add("hidden");
+    composeView.classList.add("hidden");
+}
+
+
+function openMessageView() {
+
+    listView.classList.add("hidden");
+    messageView.classList.remove("hidden");
+    composeView.classList.add("hidden");
+}
+
+
+function openCompose() {
+
+    listView.classList.add("hidden");
+    messageView.classList.add("hidden");
+    composeView.classList.remove("hidden");
+
+    subjectInput.value = "";
+    bodyInput.value = "";
+    recipientInput.value = "";
+
+    showError(composeError, "");
+
+    if (composeMode === "admin") {
+
+        composeTitle.textContent =
+            "إرسال رسالة";
+
+        recipientBox.classList.remove("hidden");
+
+    } else {
+
+        composeTitle.textContent =
+            "إرسال طلبك للأدمن";
+
+        recipientBox.classList.add("hidden");
+    }
+}
+
+
+/* =========================
+   NEW MESSAGE
+========================= */
+
+async function prepareUserMessage() {
+
+    composeMode = "user";
+
+    openCompose();
+}
+
+
+/* =========================
+   ADMIN COMPOSE
+========================= */
+
+function prepareAdminMessage() {
+
+    if (
+        !currentProfile ||
+        currentProfile.role !== "admin"
+    ) {
+        return;
+    }
+
+    composeMode = "admin";
+
+    openCompose();
+}
+
+
+/* =========================
+   SEND MESSAGE
+========================= */
+
+async function sendMessage() {
+
+    showError(composeError, "");
+
+    const subject =
+        subjectInput.value.trim();
+
+    const body =
+        bodyInput.value.trim();
+
+    if (!body) {
+
+        showError(
+            composeError,
+            "اكتب محتوى الرسالة."
+        );
+
+        return;
+    }
+
+    let receiverId = null;
+
+
+    /*
+       USER:
+       الرسالة تذهب تلقائياً للأدمن.
+    */
+
+    if (composeMode === "user") {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from("profiles")
+            .select("id")
+            .eq("role", "admin")
+            .limit(1)
+            .maybeSingle();
+
+        if (error || !data) {
+
+            console.error(error);
+
+            showError(
+                composeError,
+                "لم يتم العثور على حساب الأدمن."
+            );
+
+            return;
+        }
+
+        receiverId = data.id;
+    }
+
+
+    /*
+       ADMIN:
+       يبحث عن المستخدم بالـ username
+       أو email.
+    */
+
+    if (composeMode === "admin") {
+
+        const recipient =
+            recipientInput.value.trim();
+
+        if (!recipient) {
+
+            showError(
+                composeError,
+                "اكتب اسم المستخدم أو البريد الداخلي للمستلم."
+            );
+
+            return;
+        }
+
+        let query =
+            supabaseClient
+                .from("profiles")
+                .select("id, username, email");
+
+        if (recipient.includes("@")) {
+
+            query =
+                query.eq(
+                    "email",
+                    recipient.includes("@nilex")
+                        ? `${recipient.replace("@nilex", "@nilex.local")}`
+                        : recipient
+                );
+
+        } else {
+
+            query =
+                query.eq(
+                    "username",
+                    recipient
+                );
+        }
+
+        const {
+            data,
+            error
+        } = await query.maybeSingle();
+
+        if (error || !data) {
+
+            console.error(error);
+
+            showError(
+                composeError,
+                "المستخدم غير موجود."
+            );
+
+            return;
+        }
+
+        receiverId = data.id;
+    }
+
+
+    /*
+       إرسال الرسالة
+    */
+
+    const {
+        error
+    } = await supabaseClient
+        .from("messages")
+        .insert({
+            sender_id: currentUser.id,
+            receiver_id: receiverId,
+            subject,
+            body
+        });
+
+    if (error) {
+
+        console.error(error);
+
+        showError(
+            composeError,
+            "حصل خطأ أثناء إرسال الرسالة."
+        );
+
+        return;
+    }
+
+    subjectInput.value = "";
+    bodyInput.value = "";
+    recipientInput.value = "";
+
+    alert("تم إرسال الرسالة بنجاح.");
+
+    openList();
+
+    currentFolder = "sent";
+
+    document
+        .querySelectorAll(".folder")
+        .forEach(button =>
+            button.classList.remove("active")
+        );
+
+    await loadMessages();
+}
+
+
+/* =========================
+   REGISTER
+========================= */
+
+async function register() {
+
+    showError(registerError, "");
+
+    const username =
+        registerUsername.value.trim()
+            .toLowerCase();
+
+    const password =
+        registerPassword.value;
+
+    const displayName =
+        registerDisplayName.value.trim();
+
+    if (!username || !password) {
+
+        showError(
+            registerError,
+            "اكتب Username وكلمة المرور."
+        );
+
+        return;
+    }
+
+    if (!/^[a-z0-9._-]+$/i.test(username)) {
+
+        showError(
+            registerError,
+            "الـ Username يستخدم حروف إنجليزية وأرقام فقط."
+        );
+
+        return;
+    }
+
+    if (password.length < 6) {
+
+        showError(
+            registerError,
+            "كلمة المرور يجب أن تكون 6 أحرف على الأقل."
+        );
+
+        return;
+    }
+
+
+    /*
+       نستخدم بريد داخلي خاص بـ NILEX
+    */
+
+    const email =
+        `${username}@nilex.local`;
+
+
+    /*
+       نتأكد أن username غير مستخدم
+    */
+
+    const {
+        data: existing
+    } = await supabaseClient
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+
+    if (existing) {
+
+        showError(
+            registerError,
+            "اسم المستخدم ده مستخدم بالفعل."
+        );
+
+        return;
+    }
+
+
+    /*
+       إنشاء حساب Auth
+    */
+
+    const {
+        data,
+        error
+    } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                username,
+                display_name:
+                    displayName || username
+            }
+        }
+    });
+
+    if (error) {
+
+        console.error(error);
+
+        showError(
+            registerError,
+            error.message ||
+            "حصل خطأ أثناء إنشاء الحساب."
+        );
+
+        return;
+    }
+
+
+    /*
+       لو Supabase أعطى session مباشرة
+       ننشئ profile.
+    */
+
+    if (data.user && data.session) {
+
+        const {
+            error: profileError
+        } = await supabaseClient
+            .from("profiles")
+            .insert({
+                id: data.user.id,
+                username,
+                email,
+                display_name:
+                    displayName || username,
+                role: "user"
+            });
+
+        if (profileError) {
+
+            console.error(profileError);
+
+            showError(
+                registerError,
+                "الحساب اتعمل لكن حصل خطأ أثناء إعداد بياناته."
+            );
+
+            return;
+        }
+
+        currentUser = data.user;
+
+        await loadProfile();
+
+        return;
+    }
+
+
+    /*
+       في حالة Email Confirmation مفعّل.
+    */
+
+    showError(
+        registerError,
+        "تم إنشاء الحساب. لو تأكيد البريد الإلكتروني مفعّل في Supabase، عطّله من Authentication ثم سجّل الدخول."
+    );
+}
+
+
+/* =========================
+   LOGOUT
+========================= */
+
+async function logout() {
+
+    await supabaseClient.auth.signOut();
+
+    currentUser = null;
+    currentProfile = null;
+    currentMessages = [];
+
+    loginUsername.value = "";
+    loginPassword.value = "";
+
+    showOnly(loginScreen);
+}
+
+
+/* =========================
+   EVENTS
+========================= */
+
+document
+    .getElementById("loginBtn")
+    .addEventListener("click", login);
+
+
+document
+    .getElementById("registerBtn")
+    .addEventListener("click", register);
+
+
+document
+    .getElementById("showRegisterBtn")
+    .addEventListener("click", () => {
+
+        showError(loginError, "");
+        showOnly(registerScreen);
+
+    });
+
+
+document
+    .getElementById("backLoginBtn")
+    .addEventListener("click", () => {
+
+        showError(registerError, "");
+        showOnly(loginScreen);
+
+    });
+
+
+document
+    .getElementById("logoutBtn")
+    .addEventListener("click", logout);
+
+
+document
+    .getElementById("newMessageBtn")
+    .addEventListener(
+        "click",
+        prepareUserMessage
+    );
+
+
+document
+    .getElementById("adminComposeBtn")
+    .addEventListener(
+        "click",
+        prepareAdminMessage
+    );
+
+
+document
+    .getElementById("sendMessageBtn")
+    .addEventListener(
+        "click",
+        sendMessage
+    );
+
+
+document
+    .getElementById("cancelComposeBtn")
+    .addEventListener(
+        "click",
+        openList
+    );
+
+
+document
+    .getElementById("backToListBtn")
+    .addEventListener(
+        "click",
+        openList
+    );
+
+
+document
+    .getElementById("refreshBtn")
+    .addEventListener(
+        "click",
+        loadMessages
+    );
+
+
+document
+    .getElementById("homeBtn")
+    .addEventListener(() => {
+
+        window.location.href = "index.html";
+
+    });
+
+
+/*
+   الفولدرات
+*/
+
+document
+    .querySelectorAll(".folder[data-folder]")
+    .forEach(button => {
+
+        button.addEventListener(
+            "click",
+            async () => {
+
+                currentFolder =
+                    button.dataset.folder;
+
+                document
+                    .querySelectorAll(".folder[data-folder]")
+                    .forEach(item =>
+                        item.classList.remove("active")
+                    );
+
+                button.classList.add("active");
+
+                openList();
+
+                await loadMessages();
+
+            }
+        );
+
+    });
+
+
+/* =========================
+   ENTER KEY
+========================= */
+
+loginPassword.addEventListener(
+    "keydown",
+    event => {
+
+        if (event.key === "Enter") {
+            login();
+        }
+
+    }
+);
+
+
+/* =========================
+   SESSION CHECK
+========================= */
+
+async function init() {
+
+    const {
+        data
+    } = await supabaseClient.auth.getSession();
+
+    if (data.session?.user) {
+
+        currentUser =
+            data.session.user;
+
+        await loadProfile();
+
+    } else {
+
+        showOnly(loginScreen);
+
+    }
+}
+
+
+init();

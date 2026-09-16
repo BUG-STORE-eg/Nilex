@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NILEX Mail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="mail.css">
+</head>
+<body class="mail-page">
+<header class="header"><div class="container nav">
+<a class="brand" href="index.html"><span class="brand-mark">N</span><span>NILEX</span></a>
+<div class="nav-actions"><button id="lang" class="lang">العربية</button><a class="top-btn" href="index.html" data-i18n="back">Back to NILEX ↗</a></div>
+</div></header>
+<main class="mail-main"><div class="container">
+<section id="auth" class="mail-auth">
+<div class="mail-logo"><span>N</span></div>
+<div class="mail-heading"><small data-i18n="mailK">NILEX MAIL</small><h1 data-i18n="mailTitle">Your private inbox.</h1><p data-i18n="mailIntro">Create an account and exchange messages with other NILEX users.</p></div>
+<div class="auth-tabs"><button class="active" data-tab="login" data-i18n="loginTab">Login</button><button data-tab="signup" data-i18n="signupTab">Create Email</button></div>
+<form id="loginForm" class="auth-form"><label><span data-i18n="username">Username</span><input id="loginUser" autocomplete="username" placeholder="ahmed" required></label><label><span data-i18n="password">Password</span><input id="loginPass" type="password" autocomplete="current-password" required></label><button class="btn primary" type="submit" data-i18n="login">Login ↗</button><p class="form-note" id="loginNote"></p></form>
+<form id="signupForm" class="auth-form hidden"><label><span data-i18n="chooseUser">Choose username</span><input id="signupUser" maxlength="24" placeholder="ahmed" required></label><div class="email-preview"><span id="previewUser">username</span><b>@nilex</b></div><label><span data-i18n="choosePass">Choose password</span><input id="signupPass" type="password" minlength="4" autocomplete="new-password" required></label><label><span data-i18n="confirmPass">Confirm password</span><input id="signupPass2" type="password" minlength="4" autocomplete="new-password" required></label><button class="btn primary" type="submit" data-i18n="create">Create Email ↗</button><p class="form-note" id="signupNote"></p></form>
+<p class="demo-note" data-i18n="demoNote">Prototype mode: accounts and messages are saved only in this browser. This is not a real internet email service yet.</p>
+</section>
+<section id="mailApp" class="mail-app hidden">
+<div class="mail-top"><div><small>NILEX MAIL</small><h1 id="accountTitle">ahmed@nilex</h1></div><button id="logout" class="ghost-btn" data-i18n="logout">Log out</button></div>
+<div class="mail-layout"><aside class="mail-sidebar"><button class="compose-btn" id="compose" data-i18n="compose">+ Compose</button><button class="folder active" data-folder="inbox" data-i18n="inbox">Inbox <b id="inboxCount">0</b></button><button class="folder" data-folder="sent" data-i18n="sent">Sent</button><div class="sidebar-bottom"><span data-i18n="localOnly">Local NILEX account</span></div></aside>
+<section class="mail-content"><div id="listView"><div class="list-head"><h2 id="folderTitle">Inbox</h2><button id="refresh" class="small-btn" data-i18n="refresh">Refresh</button></div><div id="messageList" class="message-list"></div></div>
+<div id="composeView" class="compose-view hidden"><div class="list-head"><h2 data-i18n="newMessage">New message</h2><button id="cancelCompose" class="small-btn" data-i18n="cancel">Cancel</button></div><form id="composeForm"><label><span data-i18n="to">To</span><input id="toUser" placeholder="friend@nilex" required></label><label><span data-i18n="subject">Subject</span><input id="subject" required></label><label><span data-i18n="body">Message</span><textarea id="body" rows="9" required></textarea></label><button class="btn primary" type="submit" data-i18n="sendMail">Send Mail ↗</button><p class="form-note" id="sendNote"></p></form></div></section></div>
+</section>
+</div></main>
+<script src="mail.js"></script>
+</body></html>

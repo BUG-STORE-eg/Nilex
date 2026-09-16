@@ -2,191 +2,175 @@ const SUPABASE_URL =
   "https://loqwcsxdqgasgokfmswi.supabase.co";
 
 const SUPABASE_PUBLISHABLE_KEY =
-  "ضع_مفتاح_Supabase_الخاص_بك_هنا";
+  "sb_publishable_vkNXRSYz-hz_PxJCXGwdhg__0-Jmlsx";
 
 const db = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
 );
 
+// =========================================================
+// Helpers
+// =========================================================
+
+const $ = (id) => document.getElementById(id);
 
 let currentUser = null;
 let currentProfile = null;
 let currentFolder = "inbox";
 let currentMessages = [];
-let composeMode = "user";
-
-
-const $ = id => document.getElementById(id);
-
-
-function show(id) {
-  $(id).classList.remove("hidden");
-}
-
-
-function hide(id) {
-  $(id).classList.add("hidden");
-}
-
-
-function setError(id, message = "") {
-  $(id).textContent = message;
-}
-
+let selectedMessage = null;
 
 function normalizeUsername(value) {
   return value
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, "");
+    .replace("@nilex.local", "")
+    .replace("@nilex", "");
 }
 
+function setError(id, message = "") {
+  const el = $(id);
+  if (!el) return;
 
-function internalEmail(username) {
-  return `${normalizeUsername(username)}@nilex.local`;
+  el.textContent = message;
+  el.style.display = message ? "block" : "none";
 }
 
-
-function escapeHtml(value) {
-
-  return String(value ?? "")
-    .replace(/[&<>"']/g, char => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[char]));
-
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
-
 
 function formatDate(date) {
-
   try {
-
-    return new Intl.DateTimeFormat(
-      "ar-EG",
-      {
-        dateStyle: "medium",
-        timeStyle: "short"
-      }
-    ).format(new Date(date));
-
+    return new Intl.DateTimeFormat("ar-EG", {
+      dateStyle: "short",
+      timeStyle: "short"
+    }).format(new Date(date));
   } catch {
-
     return date;
+  }
+}
 
+function getDisplayName(profile) {
+  if (!profile) return "مستخدم NILEX";
+
+  return (
+    profile.display_name ||
+    profile.username ||
+    profile.email ||
+    "مستخدم NILEX"
+  );
+}
+
+function getInternalEmail(profile) {
+  if (!profile) return "";
+
+  if (profile.email) {
+    return profile.email.replace("@nilex.local", "@nilex");
   }
 
+  if (profile.username) {
+    return `${profile.username}@nilex`;
+  }
+
+  return "";
 }
 
+// =========================================================
+// Screens
+// =========================================================
 
-function switchAuth(screen) {
+function showScreen(screenId) {
+  const screens = [
+    "loginScreen",
+    "registerScreen",
+    "mailScreen"
+  ];
 
-  hide("loginScreen");
-  hide("registerScreen");
+  screens.forEach((id) => {
+    const el = $(id);
 
-  show(screen);
+    if (!el) return;
+
+    el.style.display = id === screenId ? "flex" : "none";
+  });
+}
+
+function showLogin() {
+  showScreen("loginScreen");
 
   setError("loginError");
+
+  if ($("loginPassword")) {
+    $("loginPassword").value = "";
+  }
+}
+
+function showRegister() {
+  showScreen("registerScreen");
+
   setError("registerError");
 
+  if ($("registerUsername")) {
+    $("registerUsername").value = "";
+  }
+
+  if ($("registerDisplayName")) {
+    $("registerDisplayName").value = "";
+  }
+
+  if ($("registerPassword")) {
+    $("registerPassword").value = "";
+  }
 }
 
-
-function switchMailView(view) {
-
-  hide("listView");
-  hide("messageView");
-  hide("composeView");
-
-  show(view);
-
-}
-
-
-/*
-==================================================
-LOGIN
-==================================================
-*/
+// =========================================================
+// Login
+// =========================================================
 
 async function login() {
-
   setError("loginError");
 
-  const raw =
-    $("loginUsername").value.trim();
-
-  const password =
-    $("loginPassword").value;
-
+  const raw = $("loginUsername")?.value.trim();
+  const password = $("loginPassword")?.value || "";
 
   if (!raw || !password) {
-
     setError(
       "loginError",
       "اكتب اسم المستخدم وكلمة المرور."
     );
-
     return;
   }
 
-
-  /*
-    IMPORTANT:
-    هنا لا نبحث داخل profiles قبل تسجيل الدخول.
-
-    admin
-    تتحول إلى:
-
-    admin@nilex.local
-
-    وبالتالي نتجنب مشكلة:
-    "حصل خطأ أثناء البحث عن الحساب"
-  */
-
-  let email =
-    raw.toLowerCase();
-
+  let email = raw.toLowerCase();
 
   if (!email.includes("@")) {
-
-    email =
-      internalEmail(email);
-
-  } else if (
-    email.endsWith("@nilex")
-  ) {
-
-    email =
-      email.replace(
-        "@nilex",
-        "@nilex.local"
-      );
-
+    email = `${normalizeUsername(email)}@nilex.local`;
+  } else if (email.endsWith("@nilex")) {
+    email = email.replace("@nilex", "@nilex.local");
   }
 
+  const button = $("loginBtn");
 
-  $("loginBtn").disabled = true;
-
-  $("loginBtn").textContent =
-    "جاري الدخول...";
-
+  if (button) {
+    button.disabled = true;
+    button.textContent = "جاري الدخول...";
+  }
 
   try {
-
-    const { error } =
+    const { data, error } =
       await db.auth.signInWithPassword({
         email,
         password
       });
 
-
     if (error) {
-
       console.error(error);
 
       setError(
@@ -197,212 +181,185 @@ async function login() {
       return;
     }
 
-  } catch (err) {
+    if (!data?.user) {
+      setError(
+        "loginError",
+        "تعذر تسجيل الدخول."
+      );
 
+      return;
+    }
+
+    currentUser = data.user;
+
+    await loadUserProfile();
+
+    showScreen("mailScreen");
+
+    await initializeMail();
+  } catch (err) {
     console.error(err);
 
     setError(
       "loginError",
       "حصل خطأ أثناء تسجيل الدخول."
     );
-
   } finally {
-
-    $("loginBtn").disabled = false;
-
-    $("loginBtn").textContent =
-      "تسجيل الدخول";
-
+    if (button) {
+      button.disabled = false;
+      button.textContent = "تسجيل الدخول";
+    }
   }
-
 }
 
-
-/*
-==================================================
-REGISTER
-==================================================
-*/
+// =========================================================
+// Register
+// =========================================================
 
 async function register() {
-
   setError("registerError");
 
-
-  const username =
-    normalizeUsername(
-      $("registerUsername").value
-    );
-
+  const username = normalizeUsername(
+    $("registerUsername")?.value || ""
+  );
 
   const displayName =
-    $("registerDisplayName")
-      .value
-      .trim() || username;
-
+    $("registerDisplayName")?.value.trim() || "";
 
   const password =
-    $("registerPassword").value;
+    $("registerPassword")?.value || "";
 
-
-  if (
-    !/^[a-z0-9._-]{3,30}$/.test(username)
-  ) {
-
+  if (!username || !displayName || !password) {
     setError(
       "registerError",
-      "اسم المستخدم يكون 3-30 حرفًا: a-z أو 0-9 أو . _ -"
+      "املأ جميع البيانات."
     );
-
     return;
   }
 
+  if (!/^[a-z0-9._-]{3,30}$/.test(username)) {
+    setError(
+      "registerError",
+      "اسم المستخدم يجب أن يكون 3 إلى 30 حرفًا، باستخدام الإنجليزية والأرقام و . _ - فقط."
+    );
+    return;
+  }
 
   if (password.length < 6) {
-
     setError(
       "registerError",
-      "كلمة المرور لازم تكون 6 أحرف أو أكثر."
+      "كلمة المرور يجب أن تكون 6 أحرف على الأقل."
     );
-
     return;
   }
 
+  const email = `${username}@nilex.local`;
 
-  $("registerBtn").disabled = true;
+  const button = $("registerBtn");
 
-  $("registerBtn").textContent =
-    "جاري إنشاء الحساب...";
-
+  if (button) {
+    button.disabled = true;
+    button.textContent = "جاري إنشاء الحساب...";
+  }
 
   try {
-
-    const email =
-      internalEmail(username);
-
-
     const {
       data,
       error
     } = await db.auth.signUp({
-
       email,
       password
-
     });
 
-
     if (error) {
+      console.error(error);
+
+      let message =
+        "تعذر إنشاء الحساب.";
+
+      if (
+        error.message &&
+        error.message.toLowerCase().includes("already registered")
+      ) {
+        message = "اسم المستخدم ده مستخدم بالفعل.";
+      }
 
       setError(
         "registerError",
-        error.message
+        message
       );
 
       return;
     }
 
-
-    if (!data.user) {
-
+    if (!data?.user) {
       setError(
         "registerError",
-        "لم يتم إنشاء المستخدم."
+        "تعذر إنشاء الحساب."
       );
-
       return;
     }
-
-
-    /*
-      لو Supabase طالب تأكيد Email
-      لن تكون هناك Session.
-    */
 
     if (!data.session) {
-
       setError(
         "registerError",
-        "تم إنشاء الحساب، لكن تأكيد البريد الإلكتروني مفعّل في Supabase. عطّل Email Confirmations من Auth."
+        "تم إنشاء الحساب، لكن تأكيد البريد الإلكتروني مفعّل في Supabase. عطّله من إعدادات Authentication حتى يتم الدخول مباشرة."
       );
 
       return;
     }
 
+    currentUser = data.user;
 
     const {
       error: profileError
     } = await db
       .from("profiles")
       .insert({
-
         id: data.user.id,
-
         username,
-
         email,
-
-        display_name:
-          displayName,
-
+        display_name: displayName,
         role: "user"
-
       });
 
-
     if (profileError) {
-
-      console.error(
-        "Profile error:",
-        profileError
-      );
+      console.error(profileError);
 
       setError(
         "registerError",
-        "الحساب اتعمل لكن إعداد بياناته حصل فيه خطأ: " +
-        profileError.message
+        "تم إنشاء الحساب لكن حدث خطأ أثناء إنشاء بيانات الحساب."
       );
 
       return;
     }
 
+    await loadUserProfile();
 
-    await loadProfile(
-      data.user
-    );
+    showScreen("mailScreen");
 
-
+    await initializeMail();
   } catch (err) {
-
     console.error(err);
 
     setError(
       "registerError",
       "حصل خطأ أثناء إنشاء الحساب."
     );
-
   } finally {
-
-    $("registerBtn").disabled = false;
-
-    $("registerBtn").textContent =
-      "إنشاء الحساب";
-
+    if (button) {
+      button.disabled = false;
+      button.textContent = "إنشاء الحساب";
+    }
   }
-
 }
 
+// =========================================================
+// Profile
+// =========================================================
 
-/*
-==================================================
-LOAD PROFILE
-==================================================
-*/
-
-async function loadProfile(user) {
-
-  currentUser = user;
-
+async function loadUserProfile() {
+  if (!currentUser) return null;
 
   const {
     data,
@@ -412,449 +369,445 @@ async function loadProfile(user) {
     .select(
       "id, username, email, display_name, role, created_at"
     )
-    .eq("id", user.id)
+    .eq("id", currentUser.id)
     .maybeSingle();
 
-
   if (error) {
-
-    console.error(
-      "Profile load error:",
-      error
-    );
-
-    await db.auth.signOut();
-
-    switchAuth(
-      "loginScreen"
-    );
-
-    setError(
-      "loginError",
-      "تم الدخول لكن بيانات الحساب لم تُقرأ. تأكد من RLS في Supabase."
-    );
-
-    return;
+    console.error("Profile error:", error);
+    return null;
   }
 
+  currentProfile = data;
 
-  if (!data) {
-
-    await db.auth.signOut();
-
-    switchAuth(
-      "loginScreen"
-    );
-
-    setError(
-      "loginError",
-      "الحساب موجود لكن لا توجد بيانات له في profiles."
-    );
-
-    return;
-  }
-
-
-  currentProfile =
-    data;
-
-
-  showMailScreen();
-
+  return data;
 }
 
+// =========================================================
+// Admin
+// =========================================================
 
-/*
-==================================================
-SHOW MAIL
-==================================================
-*/
-
-function showMailScreen() {
-
-  hide("loginScreen");
-  hide("registerScreen");
-
-  show("mailScreen");
-
-
-  const name =
-    currentProfile.display_name ||
-    currentProfile.username ||
-    "NILEX";
-
-
-  $("welcomeText").textContent =
-    name;
-
-
-  $("profileEmail").textContent =
-    currentProfile.email || "";
-
-
-  $("profileAvatar").textContent =
-    name.charAt(0).toUpperCase();
-
-
-  if (
-    currentProfile.role === "admin"
-  ) {
-
-    show("adminControls");
-
-  } else {
-
-    hide("adminControls");
-
-  }
-
-
-  currentFolder =
-    "inbox";
-
-
-  document
-    .querySelectorAll(".folder")
-    .forEach(
-      btn =>
-        btn.classList.remove("active")
-    );
-
-
-  document
-    .querySelector(
-      '[data-folder="inbox"]'
-    )
-    .classList.add("active");
-
-
-  loadMessages();
-
-}
-
-
-/*
-==================================================
-MESSAGES
-==================================================
-*/
-
-async function loadMessages() {
-
-  const list =
-    $("messagesList");
-
-
-  list.innerHTML =
-    '<div class="empty">جاري تحميل الرسائل...</div>';
-
-
-  if (!currentUser)
-    return;
-
-
-  let query =
-    db
-      .from("messages")
-      .select(`
-        id,
-        sender_id,
-        receiver_id,
-        subject,
-        body,
-        is_read,
-        created_at,
-        sender:profiles!messages_sender_id_fkey(
-          id,
-          username,
-          email,
-          display_name
-        ),
-        receiver:profiles!messages_receiver_id_fkey(
-          id,
-          username,
-          email,
-          display_name
-        )
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
-
-
-  if (
-    currentFolder ===
-    "inbox"
-  ) {
-
-    query =
-      query.eq(
-        "receiver_id",
-        currentUser.id
-      );
-
-  } else {
-
-    query =
-      query.eq(
-        "sender_id",
-        currentUser.id
-      );
-
-  }
-
-
+async function findAdmin() {
   const {
     data,
     error
-  } = await query;
-
+  } = await db
+    .from("profiles")
+    .select(
+      "id, username, email, display_name, role"
+    )
+    .eq("role", "admin")
+    .limit(1)
+    .maybeSingle();
 
   if (error) {
-
-    console.error(
-      "Messages error:",
-      error
-    );
-
-    list.innerHTML =
-      `<div class="empty">
-        حصل خطأ أثناء تحميل الرسائل.<br>
-        ${escapeHtml(error.message)}
-      </div>`;
-
-    return;
+    console.error("Find admin error:", error);
+    return null;
   }
 
-
-  currentMessages =
-    data || [];
-
-
-  renderMessages();
-
+  return data;
 }
 
+// =========================================================
+// Find User
+// =========================================================
 
-/*
-==================================================
-RENDER
-==================================================
-*/
+async function findRecipient(value) {
+  const raw = value.trim().toLowerCase();
+
+  if (!raw) return null;
+
+  let result;
+
+  if (raw.includes("@")) {
+    let email = raw;
+
+    if (email.endsWith("@nilex")) {
+      email = email.replace("@nilex", "@nilex.local");
+    }
+
+    result = await db
+      .from("profiles")
+      .select(
+        "id, username, email, display_name, role"
+      )
+      .eq("email", email)
+      .maybeSingle();
+  } else {
+    const username = normalizeUsername(raw);
+
+    result = await db
+      .from("profiles")
+      .select(
+        "id, username, email, display_name, role"
+      )
+      .eq("username", username)
+      .maybeSingle();
+  }
+
+  if (result.error) {
+    console.error("Find recipient error:", result.error);
+    return null;
+  }
+
+  return result.data;
+}
+
+// =========================================================
+// Send Message
+// =========================================================
+
+async function sendMessage() {
+  setError("composeError");
+
+  if (!currentUser || !currentProfile) {
+    setError(
+      "composeError",
+      "لازم تسجل الدخول أولًا."
+    );
+    return;
+  }
+
+  const subject =
+    $("subjectInput")?.value.trim() || "";
+
+  const body =
+    $("bodyInput")?.value.trim() || "";
+
+  if (!body) {
+    setError(
+      "composeError",
+      "اكتب محتوى الرسالة."
+    );
+    return;
+  }
+
+  let recipient = null;
+
+  if (currentProfile.role === "admin") {
+    const recipientInput =
+      $("recipientInput")?.value.trim() || "";
+
+    if (!recipientInput) {
+      setError(
+        "composeError",
+        "اكتب اسم المستخدم أو البريد الداخلي للمستلم."
+      );
+      return;
+    }
+
+    recipient = await findRecipient(
+      recipientInput
+    );
+
+    if (!recipient) {
+      setError(
+        "composeError",
+        "المستخدم ده مش موجود."
+      );
+      return;
+    }
+
+    if (recipient.id === currentUser.id) {
+      setError(
+        "composeError",
+        "لا يمكن إرسال رسالة لنفس الحساب."
+      );
+      return;
+    }
+  } else {
+    recipient = await findAdmin();
+
+    if (!recipient) {
+      setError(
+        "composeError",
+        "تعذر العثور على حساب الأدمن."
+      );
+      return;
+    }
+  }
+
+  const button = $("sendMessageBtn");
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "جاري الإرسال...";
+  }
+
+  try {
+    const {
+      error
+    } = await db
+      .from("messages")
+      .insert({
+        sender_id: currentUser.id,
+        receiver_id: recipient.id,
+        subject,
+        body
+      });
+
+    if (error) {
+      console.error("Send message error:", error);
+
+      setError(
+        "composeError",
+        "حصل خطأ أثناء إرسال الرسالة."
+      );
+
+      return;
+    }
+
+    if ($("subjectInput")) {
+      $("subjectInput").value = "";
+    }
+
+    if ($("bodyInput")) {
+      $("bodyInput").value = "";
+    }
+
+    if (
+      currentProfile.role === "admin" &&
+      $("recipientInput")
+    ) {
+      $("recipientInput").value = "";
+    }
+
+    setError("composeError");
+
+    await loadMessages();
+
+    showListView();
+  } catch (err) {
+    console.error(err);
+
+    setError(
+      "composeError",
+      "حصل خطأ أثناء إرسال الرسالة."
+    );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "إرسال الرسالة";
+    }
+  }
+}
+
+// =========================================================
+// Messages
+// =========================================================
+
+const messageSelect = `
+  id,
+  sender_id,
+  receiver_id,
+  subject,
+  body,
+  is_read,
+  created_at,
+  sender:profiles!messages_sender_id_fkey(
+    id,
+    username,
+    email,
+    display_name
+  ),
+  receiver:profiles!messages_receiver_id_fkey(
+    id,
+    username,
+    email,
+    display_name
+  )
+`;
+
+async function loadMessages() {
+  if (!currentUser) return;
+
+  const list = $("messagesList");
+
+  if (list) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⌛</div>
+        <p>جاري تحميل الرسائل...</p>
+      </div>
+    `;
+  }
+
+  try {
+    let query = db
+      .from("messages")
+      .select(messageSelect)
+      .order("created_at", {
+        ascending: false
+      });
+
+    if (currentFolder === "inbox") {
+      query = query.eq(
+        "receiver_id",
+        currentUser.id
+      );
+    } else if (currentFolder === "sent") {
+      query = query.eq(
+        "sender_id",
+        currentUser.id
+      );
+    }
+
+    const {
+      data,
+      error
+    } = await query;
+
+    if (error) {
+      console.error("Load messages error:", error);
+
+      if (list) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">!</div>
+            <p>حصل خطأ أثناء تحميل الرسائل.</p>
+          </div>
+        `;
+      }
+
+      return;
+    }
+
+    currentMessages = data || [];
+
+    renderMessages();
+
+    await updateInboxCount();
+  } catch (err) {
+    console.error(err);
+  }
+}
 
 function renderMessages() {
+  const list = $("messagesList");
 
-  const list =
-    $("messagesList");
-
-
-  $("folderTitle").textContent =
-    currentFolder === "inbox"
-      ? "الوارد"
-      : "المرسل";
-
+  if (!list) return;
 
   if (!currentMessages.length) {
-
-    list.innerHTML =
-      '<div class="empty">لا توجد رسائل هنا حاليًا.</div>';
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">✉</div>
+        <p>${
+          currentFolder === "inbox"
+            ? "مفيش رسائل واردة."
+            : "مفيش رسائل مرسلة."
+        }</p>
+      </div>
+    `;
 
     return;
   }
 
+  list.innerHTML = currentMessages
+    .map((message) => {
+      const otherProfile =
+        currentFolder === "inbox"
+          ? message.sender
+          : message.receiver;
 
-  list.innerHTML =
-    currentMessages
-      .map(message => {
+      const name =
+        getDisplayName(otherProfile);
 
-        const other =
-          currentFolder === "inbox"
-            ? message.sender
-            : message.receiver;
+      const internalEmail =
+        getInternalEmail(otherProfile);
 
+      const unread =
+        currentFolder === "inbox" &&
+        !message.is_read;
 
-        const name =
-          other?.display_name ||
-          other?.username ||
-          other?.email ||
-          "NILEX";
-
-
-        const preview =
-          (message.body || "")
-            .replace(/\s+/g, " ")
-            .slice(0, 100);
-
-
-        return `
-
-          <div
-            class="message-row ${
-              !message.is_read &&
-              currentFolder === "inbox"
-                ? "unread"
-                : ""
-            }"
-            data-message-id="${message.id}"
-          >
-
-            <div class="message-sender">
-              ${escapeHtml(name)}
-            </div>
-
-            <div>
-
-              <div class="message-subject">
-                ${escapeHtml(
-                  message.subject ||
-                  "(بدون عنوان)"
-                )}
-              </div>
-
-              <div class="message-preview">
-                ${escapeHtml(preview)}
-              </div>
-
-            </div>
-
-            <div class="message-date">
-              ${escapeHtml(
-                formatDate(
-                  message.created_at
-                )
-              )}
-            </div>
-
+      return `
+        <button
+          class="message-row ${
+            unread ? "unread" : ""
+          }"
+          data-message-id="${message.id}"
+          type="button"
+        >
+          <div class="message-avatar">
+            ${escapeHtml(
+              name.charAt(0).toUpperCase()
+            )}
           </div>
 
-        `;
+          <div class="message-main">
+            <div class="message-top">
+              <strong>
+                ${escapeHtml(name)}
+              </strong>
 
-      })
-      .join("");
+              <span class="message-date">
+                ${escapeHtml(
+                  formatDate(message.created_at)
+                )}
+              </span>
+            </div>
 
+            <div class="message-email">
+              ${escapeHtml(internalEmail)}
+            </div>
+
+            <div class="message-subject">
+              ${
+                escapeHtml(
+                  message.subject || "بدون عنوان"
+                )
+              }
+            </div>
+
+            <div class="message-preview">
+              ${escapeHtml(
+                message.body.substring(0, 120)
+              )}
+              ${
+                message.body.length > 120
+                  ? "..."
+                  : ""
+              }
+            </div>
+          </div>
+        </button>
+      `;
+    })
+    .join("");
 
   list
     .querySelectorAll(".message-row")
-    .forEach(row => {
-
-      row.addEventListener(
+    .forEach((button) => {
+      button.addEventListener(
         "click",
-        () =>
-          openMessage(
-            Number(
-              row.dataset.messageId
-            )
-          )
+        () => {
+          const id = Number(
+            button.dataset.messageId
+          );
+
+          openMessage(id);
+        }
       );
-
     });
-
-
-  if (
-    currentFolder === "inbox"
-  ) {
-
-    const unread =
-      currentMessages.filter(
-        m => !m.is_read
-      ).length;
-
-
-    $("inboxCount")
-      .textContent =
-      unread;
-
-  }
-
 }
 
-
-/*
-==================================================
-OPEN MESSAGE
-==================================================
-*/
+// =========================================================
+// Open Message
+// =========================================================
 
 async function openMessage(id) {
-
   const message =
     currentMessages.find(
-      m => Number(m.id) === id
+      (item) => Number(item.id) === id
     );
 
+  if (!message) return;
 
-  if (!message)
-    return;
-
-
-  $("messageContent").innerHTML = `
-
-    <article class="message-card">
-
-      <div class="message-meta">
-
-        <h2>
-          ${escapeHtml(
-            message.subject ||
-            "(بدون عنوان)"
-          )}
-        </h2>
-
-        <div class="meta-line">
-          من:
-          ${escapeHtml(
-            message.sender?.display_name ||
-            message.sender?.username ||
-            message.sender?.email ||
-            ""
-          )}
-        </div>
-
-        <div class="meta-line">
-          إلى:
-          ${escapeHtml(
-            message.receiver?.display_name ||
-            message.receiver?.username ||
-            message.receiver?.email ||
-            ""
-          )}
-        </div>
-
-        <div class="meta-line">
-          ${escapeHtml(
-            formatDate(
-              message.created_at
-            )
-          )}
-        </div>
-
-      </div>
-
-      <div class="message-body">
-        ${escapeHtml(
-          message.body
-        )}
-      </div>
-
-    </article>
-
-  `;
-
-
-  switchMailView(
-    "messageView"
-  );
-
+  selectedMessage = message;
 
   if (
     currentFolder === "inbox" &&
     !message.is_read &&
     message.receiver_id === currentUser.id
   ) {
-
     const {
       error
     } = await db
@@ -862,705 +815,545 @@ async function openMessage(id) {
       .update({
         is_read: true
       })
-      .eq(
-        "id",
-        id
-      )
+      .eq("id", message.id)
       .eq(
         "receiver_id",
         currentUser.id
       );
 
-
-    if (!error) {
-
-      message.is_read =
-        true;
-
-      renderMessages();
-
+    if (error) {
+      console.error(
+        "Mark read error:",
+        error
+      );
+    } else {
+      message.is_read = true;
     }
-
   }
 
+  renderMessageContent();
+
+  const listView = $("listView");
+  const messageView = $("messageView");
+
+  if (listView) {
+    listView.style.display = "none";
+  }
+
+  if (messageView) {
+    messageView.style.display = "block";
+  }
+
+  await updateInboxCount();
+  renderMessages();
 }
 
+function renderMessageContent() {
+  const container =
+    $("messageContent");
 
-/*
-==================================================
-USER COMPOSE
-==================================================
-*/
+  if (!container || !selectedMessage) {
+    return;
+  }
 
-function openUserCompose() {
+  const message = selectedMessage;
 
-  composeMode =
-    "user";
+  const senderName =
+    getDisplayName(message.sender);
 
+  const senderEmail =
+    getInternalEmail(message.sender);
 
-  $("composeTitle")
-    .textContent =
-    "إرسال طلب للأدمن";
+  const receiverName =
+    getDisplayName(message.receiver);
 
+  const receiverEmail =
+    getInternalEmail(message.receiver);
 
-  $("recipientInput")
-    .value =
-    "admin@nilex";
+  container.innerHTML = `
+    <div class="message-full">
+      <div class="message-full-head">
+        <div class="message-full-avatar">
+          ${escapeHtml(
+            senderName.charAt(0).toUpperCase()
+          )}
+        </div>
 
+        <div class="message-full-info">
+          <h2>
+            ${escapeHtml(
+              message.subject || "بدون عنوان"
+            )}
+          </h2>
 
-  $("recipientInput")
-    .readOnly =
-    true;
+          <div class="message-meta">
+            <strong>
+              ${escapeHtml(senderName)}
+            </strong>
 
+            <span>
+              ${escapeHtml(senderEmail)}
+            </span>
 
-  show("recipientBox");
+            <span>→</span>
 
+            <span>
+              ${escapeHtml(receiverEmail || receiverName)}
+            </span>
 
-  setError(
-    "composeError"
-  );
+            <span>
+              ${escapeHtml(
+                formatDate(message.created_at)
+              )}
+            </span>
+          </div>
+        </div>
+      </div>
 
-
-  $("subjectInput")
-    .value = "";
-
-
-  $("bodyInput")
-    .value = "";
-
-
-  switchMailView(
-    "composeView"
-  );
-
+      <div class="message-full-body">
+        ${escapeHtml(message.body).replace(
+          /\n/g,
+          "<br>"
+        )}
+      </div>
+    </div>
+  `;
 }
 
+// =========================================================
+// Inbox Count
+// =========================================================
 
-/*
-==================================================
-ADMIN COMPOSE
-==================================================
-*/
-
-function openAdminCompose() {
-
-  composeMode =
-    "admin";
-
-
-  $("composeTitle")
-    .textContent =
-    "إرسال رسالة لحساب";
-
-
-  $("recipientInput")
-    .value = "";
-
-
-  $("recipientInput")
-    .readOnly =
-    false;
-
-
-  $("recipientInput")
-    .placeholder =
-    "username أو username@nilex";
-
-
-  show("recipientBox");
-
-
-  setError(
-    "composeError"
-  );
-
-
-  $("subjectInput")
-    .value = "";
-
-
-  $("bodyInput")
-    .value = "";
-
-
-  switchMailView(
-    "composeView"
-  );
-
-}
-
-
-/*
-==================================================
-FIND ADMIN
-==================================================
-*/
-
-async function findAdmin() {
+async function updateInboxCount() {
+  if (!currentUser) return;
 
   const {
-    data,
+    count,
     error
   } = await db
-    .from("profiles")
-    .select(
-      "id, username, email, display_name"
-    )
+    .from("messages")
+    .select("id", {
+      count: "exact",
+      head: true
+    })
     .eq(
-      "role",
-      "admin"
+      "receiver_id",
+      currentUser.id
     )
-    .limit(1)
-    .maybeSingle();
+    .eq("is_read", false);
 
+  if (error) {
+    console.error(
+      "Inbox count error:",
+      error
+    );
 
-  if (error)
-    throw error;
+    return;
+  }
 
+  const countElement =
+    $("inboxCount");
 
-  return data;
+  if (!countElement) return;
 
+  const total = count || 0;
+
+  countElement.textContent =
+    total > 99 ? "99+" : String(total);
+
+  countElement.style.display =
+    total > 0 ? "inline-flex" : "none";
 }
 
+// =========================================================
+// Folder
+// =========================================================
 
-/*
-==================================================
-FIND USER
-==================================================
-*/
+async function changeFolder(folder) {
+  if (
+    folder !== "inbox" &&
+    folder !== "sent"
+  ) {
+    return;
+  }
 
-async function findRecipientForAdmin(
-  input
-) {
+  currentFolder = folder;
 
-  let value =
-    input
-      .trim()
-      .toLowerCase();
+  const title =
+    $("folderTitle");
 
+  if (title) {
+    title.textContent =
+      folder === "inbox"
+        ? "الوارد"
+        : "المرسل";
+  }
 
-  if (!value)
-    return null;
+  document
+    .querySelectorAll(".folder-btn")
+    .forEach((button) => {
+      button.classList.toggle(
+        "active",
+        button.dataset.folder === folder
+      );
+    });
 
+  showListView();
 
-  if (!value.includes("@")) {
+  await loadMessages();
+}
 
+// =========================================================
+// Views
+// =========================================================
+
+function showListView() {
+  const listView = $("listView");
+  const messageView = $("messageView");
+  const composeView = $("composeView");
+
+  if (listView) {
+    listView.style.display = "block";
+  }
+
+  if (messageView) {
+    messageView.style.display = "none";
+  }
+
+  if (composeView) {
+    composeView.style.display = "none";
+  }
+
+  selectedMessage = null;
+}
+
+function showCompose() {
+  const listView = $("listView");
+  const messageView = $("messageView");
+  const composeView = $("composeView");
+
+  if (listView) {
+    listView.style.display = "none";
+  }
+
+  if (messageView) {
+    messageView.style.display = "none";
+  }
+
+  if (composeView) {
+    composeView.style.display = "block";
+  }
+
+  setError("composeError");
+
+  const composeTitle =
+    $("composeTitle");
+
+  if (composeTitle) {
+    composeTitle.textContent =
+      currentProfile?.role === "admin"
+        ? "رسالة جديدة"
+        : "إرسال طلبك للأدمن";
+  }
+
+  const recipientBox =
+    $("recipientBox");
+
+  if (recipientBox) {
+    recipientBox.style.display =
+      currentProfile?.role === "admin"
+        ? "block"
+        : "none";
+  }
+
+  if (
+    currentProfile?.role !== "admin" &&
+    $("recipientInput")
+  ) {
+    $("recipientInput").value =
+      "admin@nilex";
+
+    $("recipientInput").disabled = true;
+  } else if ($("recipientInput")) {
+    $("recipientInput").disabled = false;
+    $("recipientInput").value = "";
+  }
+
+  if ($("subjectInput")) {
+    $("subjectInput").value = "";
+  }
+
+  if ($("bodyInput")) {
+    $("bodyInput").value = "";
+  }
+}
+
+// =========================================================
+// UI Setup
+// =========================================================
+
+function setupUI() {
+  $("showRegisterBtn")?.addEventListener(
+    "click",
+    showRegister
+  );
+
+  $("backLoginBtn")?.addEventListener(
+    "click",
+    showLogin
+  );
+
+  $("loginBtn")?.addEventListener(
+    "click",
+    login
+  );
+
+  $("registerBtn")?.addEventListener(
+    "click",
+    register
+  );
+
+  $("loginPassword")?.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Enter") {
+        login();
+      }
+    }
+  );
+
+  $("registerPassword")?.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Enter") {
+        register();
+      }
+    }
+  );
+
+  document
+    .querySelectorAll(".folder-btn")
+    .forEach((button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          changeFolder(
+            button.dataset.folder
+          );
+        }
+      );
+    });
+
+  $("newMessageBtn")?.addEventListener(
+    "click",
+    showCompose
+  );
+
+  $("adminComposeBtn")?.addEventListener(
+    "click",
+    showCompose
+  );
+
+  $("cancelComposeBtn")?.addEventListener(
+    "click",
+    showListView
+  );
+
+  $("backToListBtn")?.addEventListener(
+    "click",
+    showListView
+  );
+
+  $("sendMessageBtn")?.addEventListener(
+    "click",
+    sendMessage
+  );
+
+  $("refreshBtn")?.addEventListener(
+    "click",
+    async () => {
+      await loadMessages();
+    }
+  );
+
+  $("homeBtn")?.addEventListener(
+    "click",
+    () => {
+      window.location.href = "index.html";
+    }
+  );
+
+  $("logoutBtn")?.addEventListener(
+    "click",
+    logout
+  );
+}
+
+// =========================================================
+// Initialize Mail
+// =========================================================
+
+async function initializeMail() {
+  if (!currentUser) return;
+
+  await loadUserProfile();
+
+  if (!currentProfile) {
+    console.error(
+      "No profile found for current user."
+    );
+
+    return;
+  }
+
+  const welcome =
+    $("welcomeText");
+
+  if (welcome) {
+    welcome.textContent =
+      `أهلاً ${getDisplayName(currentProfile)}`;
+  }
+
+  const profileEmail =
+    $("profileEmail");
+
+  if (profileEmail) {
+    profileEmail.textContent =
+      getInternalEmail(currentProfile);
+  }
+
+  const avatar =
+    $("profileAvatar");
+
+  if (avatar) {
+    avatar.textContent =
+      getDisplayName(
+        currentProfile
+      )
+        .charAt(0)
+        .toUpperCase();
+  }
+
+  const adminControls =
+    $("adminControls");
+
+  if (adminControls) {
+    adminControls.style.display =
+      currentProfile.role === "admin"
+        ? "block"
+        : "none";
+  }
+
+  await changeFolder("inbox");
+}
+
+// =========================================================
+// Logout
+// =========================================================
+
+async function logout() {
+  try {
+    await db.auth.signOut();
+  } catch (error) {
+    console.error(error);
+  }
+
+  currentUser = null;
+  currentProfile = null;
+  currentMessages = [];
+  selectedMessage = null;
+
+  showLogin();
+}
+
+// =========================================================
+// Auth State
+// =========================================================
+
+async function checkSession() {
+  try {
     const {
       data,
       error
-    } = await db
-      .from("profiles")
-      .select(
-        "id, username, email, display_name"
-      )
-      .eq(
-        "username",
-        value
-      )
-      .maybeSingle();
+    } = await db.auth.getSession();
 
-
-    if (error)
-      throw error;
-
-
-    return data;
-
-  }
-
-
-  if (
-    value.endsWith("@nilex")
-  ) {
-
-    value =
-      value.replace(
-        "@nilex",
-        "@nilex.local"
+    if (error) {
+      console.error(
+        "Session error:",
+        error
       );
 
-  }
-
-
-  const {
-    data,
-    error
-  } = await db
-    .from("profiles")
-    .select(
-      "id, username, email, display_name"
-    )
-    .eq(
-      "email",
-      value
-    )
-    .maybeSingle();
-
-
-  if (error)
-    throw error;
-
-
-  return data;
-
-}
-
-
-/*
-==================================================
-SEND MESSAGE
-==================================================
-*/
-
-async function sendMessage() {
-
-  setError(
-    "composeError"
-  );
-
-
-  const subject =
-    $("subjectInput")
-      .value
-      .trim();
-
-
-  const body =
-    $("bodyInput")
-      .value
-      .trim();
-
-
-  if (!subject) {
-
-    setError(
-      "composeError",
-      "اكتب عنوان الرسالة."
-    );
-
-    return;
-  }
-
-
-  if (!body) {
-
-    setError(
-      "composeError",
-      "اكتب محتوى الرسالة."
-    );
-
-    return;
-  }
-
-
-  $("sendMessageBtn")
-    .disabled =
-    true;
-
-
-  $("sendMessageBtn")
-    .textContent =
-    "جاري الإرسال...";
-
-
-  try {
-
-    let recipient;
-
-
-    if (
-      composeMode ===
-      "user"
-    ) {
-
-      recipient =
-        await findAdmin();
-
-    } else {
-
-      recipient =
-        await findRecipientForAdmin(
-          $("recipientInput")
-            .value
-        );
-
-    }
-
-
-    if (!recipient) {
-
-      setError(
-        "composeError",
-        "لم يتم العثور على الحساب المطلوب."
-      );
-
+      showLogin();
       return;
     }
 
+    if (data?.session?.user) {
+      currentUser =
+        data.session.user;
 
-    const {
-      error
-    } = await db
-      .from("messages")
-      .insert({
+      await loadUserProfile();
 
-        sender_id:
-          currentUser.id,
-
-        receiver_id:
-          recipient.id,
-
-        subject,
-
-        body
-
-      });
-
-
-    if (error)
-      throw error;
-
-
-    $("subjectInput")
-      .value = "";
-
-
-    $("bodyInput")
-      .value = "";
-
-
-    switchMailView(
-      "listView"
-    );
-
-
-    await loadMessages();
-
-
-  } catch (err) {
-
-    console.error(
-      "Send message error:",
-      err
-    );
-
-
-    setError(
-      "composeError",
-      err.message ||
-      "حصل خطأ أثناء إرسال الرسالة."
-    );
-
-  } finally {
-
-    $("sendMessageBtn")
-      .disabled =
-      false;
-
-
-    $("sendMessageBtn")
-      .textContent =
-      "إرسال الرسالة";
-
-  }
-
-}
-
-
-/*
-==================================================
-LOGOUT
-==================================================
-*/
-
-async function logout() {
-
-  await db.auth.signOut();
-
-}
-
-
-/*
-==================================================
-EVENTS
-==================================================
-*/
-
-function bindEvents() {
-
-  $("loginBtn")
-    .addEventListener(
-      "click",
-      login
-    );
-
-
-  $("registerBtn")
-    .addEventListener(
-      "click",
-      register
-    );
-
-
-  $("showRegisterBtn")
-    .addEventListener(
-      "click",
-      () =>
-        switchAuth(
-          "registerScreen"
-        )
-    );
-
-
-  $("backLoginBtn")
-    .addEventListener(
-      "click",
-      () =>
-        switchAuth(
-          "loginScreen"
-        )
-    );
-
-
-  $("loginPassword")
-    .addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key ===
-          "Enter"
-        ) {
-
-          login();
-
-        }
-
+      if (currentProfile) {
+        showScreen("mailScreen");
+        await initializeMail();
+      } else {
+        await db.auth.signOut();
+        showLogin();
       }
-    );
-
-
-  $("registerPassword")
-    .addEventListener(
-      "keydown",
-      event => {
-
-        if (
-          event.key ===
-          "Enter"
-        ) {
-
-          register();
-
-        }
-
-      }
-    );
-
-
-  $("newMessageBtn")
-    .addEventListener(
-      "click",
-      openUserCompose
-    );
-
-
-  $("adminComposeBtn")
-    .addEventListener(
-      "click",
-      openAdminCompose
-    );
-
-
-  $("cancelComposeBtn")
-    .addEventListener(
-      "click",
-      () => {
-
-        switchMailView(
-          "listView"
-        );
-
-        loadMessages();
-
-      }
-    );
-
-
-  $("backToListBtn")
-    .addEventListener(
-      "click",
-      () => {
-
-        switchMailView(
-          "listView"
-        );
-
-        loadMessages();
-
-      }
-    );
-
-
-  $("sendMessageBtn")
-    .addEventListener(
-      "click",
-      sendMessage
-    );
-
-
-  $("refreshBtn")
-    .addEventListener(
-      "click",
-      loadMessages
-    );
-
-
-  $("logoutBtn")
-    .addEventListener(
-      "click",
-      logout
-    );
-
-
-  $("homeBtn")
-    .addEventListener(
-      "click",
-      () => {
-
-        window.location.href =
-          "index.html";
-
-      }
-    );
-
-
-  document
-    .querySelectorAll(".folder")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        async () => {
-
-          currentFolder =
-            button.dataset.folder;
-
-
-          document
-            .querySelectorAll(
-              ".folder"
-            )
-            .forEach(
-              btn =>
-                btn.classList.remove(
-                  "active"
-                )
-            );
-
-
-          button.classList.add(
-            "active"
-          );
-
-
-          switchMailView(
-            "listView"
-          );
-
-
-          await loadMessages();
-
-        }
-      );
-
-    });
-
-}
-
-
-/*
-==================================================
-INIT
-==================================================
-*/
-
-async function init() {
-
-  bindEvents();
-
-
-  const {
-    data: {
-      session
+    } else {
+      showLogin();
     }
-  } =
-    await db.auth.getSession();
-
-
-  if (session?.user) {
-
-    await loadProfile(
-      session.user
-    );
-
-  } else {
-
-    switchAuth(
-      "loginScreen"
-    );
-
+  } catch (error) {
+    console.error(error);
+    showLogin();
   }
-
-
-  db.auth.onAuthStateChange(
-    async (
-      event,
-      sessionData
-    ) => {
-
-      if (
-        event ===
-        "SIGNED_OUT"
-      ) {
-
-        currentUser =
-          null;
-
-        currentProfile =
-          null;
-
-        hide(
-          "mailScreen"
-        );
-
-        switchAuth(
-          "loginScreen"
-        );
-
-      }
-
-
-      if (
-        event ===
-          "SIGNED_IN" &&
-        sessionData?.user
-      ) {
-
-        setTimeout(
-          () =>
-            loadProfile(
-              sessionData.user
-            ),
-          0
-        );
-
-      }
-
-    }
-  );
-
 }
 
+// =========================================================
+// Supabase Auth Listener
+// =========================================================
 
-init();
+db.auth.onAuthStateChange(
+  async (event, session) => {
+    if (
+      event === "SIGNED_OUT"
+    ) {
+      currentUser = null;
+      currentProfile = null;
+      currentMessages = [];
+      selectedMessage = null;
+
+      showLogin();
+      return;
+    }
+
+    if (
+      session?.user &&
+      (
+        event === "SIGNED_IN" ||
+        event === "INITIAL_SESSION"
+      )
+    ) {
+      currentUser = session.user;
+
+      await loadUserProfile();
+
+      if (currentProfile) {
+        showScreen("mailScreen");
+        await initializeMail();
+      }
+    }
+  }
+);
+
+// =========================================================
+// Start
+// =========================================================
+
+document.addEventListener(
+  "DOMContentLoaded",
+  async () => {
+    setupUI();
+    await checkSession();
+  }
+);

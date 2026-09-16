@@ -49,30 +49,42 @@ function updateEmailPreview(){
 async function register(){
   err("registerError");
   const u=$("registerUsername").value.trim().toLowerCase();
-  const d=u;
   const p=$("registerPassword").value;
   if(!/^[a-z0-9._-]{3,30}$/.test(u))return err("registerError","اسم المستخدم يجب أن يكون 3-30 حرفًا بالإنجليزية والأرقام و . _ - فقط.");
   if(p.length<6)return err("registerError","كلمة المرور يجب أن تكون 6 أحرف على الأقل.");
-  const em=u+"@nilex.local";
+
   const b=$("registerBtn");b.disabled=true;b.textContent="جاري إنشاء الحساب...";
   try{
-    const r=await db.auth.signUp({email:em,password:p});
-    if(r.error){
-      const msg=(r.error.message||"").toLowerCase();
-      if(msg.includes("rate limit")||msg.includes("email rate limit")) return err("registerError","Supabase أوقف إنشاء الحسابات مؤقتًا بسبب كثرة المحاولات. انتظر قليلًا قبل إنشاء حساب جديد.");
-      if(msg.includes("invalid")&&msg.includes("email")) return err("registerError","حصل خطأ في عنوان البريد الداخلي. لا تكتب @nilex.local بنفسك؛ الموقع ينشئه تلقائيًا.");
-      if(msg.includes("already registered")||msg.includes("already been registered")) return err("registerError","اسم المستخدم ده مستخدم بالفعل.");
-      return err("registerError",r.error.message);
+    // إنشاء الحساب يتم من Edge Function باستخدام مفتاح السيرفر، مع تأكيد البريد تلقائيًا.
+    // هذا يمنع Supabase من إرسال رسالة تأكيد ويجنب حد البريد الافتراضي.
+    const r=await fetch(SUPABASE_URL+"/functions/v1/create-nilex-user",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_PUBLISHABLE_KEY},
+      body:JSON.stringify({username:u,password:p})
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||data.error){
+      const msg=String(data.error||"تعذر إنشاء الحساب.");
+      if(msg.toLowerCase().includes("already")||msg.includes("مستخدم بالفعل"))return err("registerError","اسم المستخدم ده مستخدم بالفعل.");
+      return err("registerError",msg);
     }
-    if(!r.data.user)return err("registerError","تعذر إنشاء الحساب.");
-    if(!r.data.session)return err("registerError","الحساب اتعمل، لكن تأكيد البريد الإلكتروني مفعّل في Supabase. عطّله من Authentication ثم جرّب تسجيل الدخول.");
-    const q=await db.from("profiles").insert({id:r.data.user.id,username:u,email:em,display_name:d,role:"user"});
-    if(q.error){console.error(q.error);return err("registerError","الحساب اتعمل لكن تعذر إنشاء بيانات الحساب.");}
-    user=r.data.user;await loadProfile();screen("mailScreen");await init();const pending=sessionStorage.getItem("nilex_pending_service");if(pending){sessionStorage.removeItem("nilex_pending_service");if(profile.role!=="admin")compose(pending)}
-  }catch(e){console.error(e);err("registerError","حصل خطأ أثناء إنشاء الحساب.")}
-  finally{b.disabled=false;b.textContent="إنشاء الحساب"}
-}
 
+    // تسجيل الدخول مباشرة بالحساب الذي تم إنشاؤه.
+    const loginResult=await db.auth.signInWithPassword({email:u+"@nilex.local",password:p});
+    if(loginResult.error||!loginResult.data.user)return err("registerError","الحساب اتعمل، لكن تعذر تسجيل الدخول تلقائيًا. جرّب تسجيل الدخول من الصفحة الرئيسية.");
+
+    user=loginResult.data.user;
+    await loadProfile();
+    if(!profile){await db.auth.signOut();return err("registerError","الحساب اتعمل لكن بيانات الحساب غير موجودة.");}
+    screen("mailScreen");
+    await init();
+    const pending=sessionStorage.getItem("nilex_pending_service");
+    if(pending){sessionStorage.removeItem("nilex_pending_service");if(profile.role!=="admin")compose(pending)}
+  }catch(e){
+    console.error(e);
+    err("registerError","تعذر الاتصال بخدمة إنشاء الحساب. تأكد أن Edge Function الخاصة بـ NILEX تم نشرها.");
+  }finally{b.disabled=false;b.textContent="إنشاء الحساب"}
+}
 async function loadProfile(){
   if(!user){profile=null;return null}
   const r=await db.from("profiles").select("id,username,email,display_name,role").eq("id",user.id).maybeSingle();
